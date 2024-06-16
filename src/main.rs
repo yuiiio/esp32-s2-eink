@@ -22,22 +22,99 @@ fn main() -> ! {
 
     let io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
     let mut led = Output::new(io.pins.gpio15, Level::High);
-    let mut touch_out = io.pins.gpio3;
 
-    let mut adc1_config = AdcConfig::new();
-    let mut adc1_pin = adc1_config.enable_pin(io.pins.gpio5, Attenuation::Attenuation11dB);
-    let mut adc1 = Adc::new(peripherals.ADC1, adc1_config);
+    /* sd card */
+    /*
+    SDCARD_CS = 34
+    SDCARD_MOSI 35
+    SDCARD_SCLK = 36
+    SDCARD_MISO = 37
+    */
+
+    /* eink display */
+    const HEIGHT: u16 = 1072;
+    const WIDTH: u16 = 1448;
+
+    let mut mode1 = Output::new(io.pins.gpio11, Level::High);
+    let mut ckv = Output::new(io.pins.gpio14, Level::High);
+    let mut spv = Output::new(io.pins.gpio12, Level::High);
+
+    let mut xcl = Output::new(io.pins.gpio39, Level::High);
+    let mut xle = Output::new(io.pins.gpio40, Level::High);
+    let mut xoe = Output::new(io.pins.gpio38, Level::High);
+    let mut xstl = Output::new(io.pins.gpio33, Level::High);
+
+    let mut d0 = Output::new(io.pins.gpio18, Level::High);
+    let mut d1 = Output::new(io.pins.gpio21, Level::High);
+    let mut d2 = Output::new(io.pins.gpio16, Level::High);
+    let mut d3 = Output::new(io.pins.gpio17, Level::High);
+    let mut d4 = Output::new(io.pins.gpio7, Level::High);
+    let mut d5 = Output::new(io.pins.gpio9, Level::High);
+    let mut d6 = Output::new(io.pins.gpio10, Level::High);
+    let mut d7 = Output::new(io.pins.gpio13, Level::High);
+
+    for cycle in 0..32 {
+    /* start frame */
+    xoe.set_high();
+    mode1.set_high();
+    spv.set_low();
+    ckv.set_low();
+    delay.delay(1.micros());
+    ckv.set_high();
+    spv.set_high();
+
+    for _line in 0..HEIGHT {
+        /* write row */
+        xstl.set_low();
+        for _i in 0..(WIDTH/4) {
+            /* black b01010101 */
+            /* white b10101010 */
+            /* can write 4 pixel for onece */
+            if cycle < 16 {
+            d0.set_high();
+            d1.set_low();
+            d2.set_high();
+            d3.set_low();
+            d4.set_high();
+            d5.set_low();
+            d6.set_high();
+            d7.set_low();
+            } else {
+            d0.set_low();
+            d1.set_high();
+            d2.set_low();
+            d3.set_high();
+            d4.set_low();
+            d5.set_high();
+            d6.set_low();
+            d7.set_high();
+            }
+
+            xcl.set_high();
+            xcl.set_low();
+        }
+
+        xstl.set_high();
+        xcl.set_high();
+        xcl.set_low();
+
+        xle.set_high();
+        xle.set_low();
+
+        ckv.set_low();
+        delay.delay(1.micros());
+        ckv.set_high();
+    }
+
+    /* end frame */
+    mode1.set_low();
+    xoe.set_low();
+    }
 
     loop {
-        touch_out.set_high();
-        delay.delay(1.micros());
-        touch_out.set_low();
-        delay.delay(1.micros());
-        let pin_value: u16 = nb::block!(adc1.read_oneshot(&mut adc1_pin)).unwrap();
-        if pin_value > (1 << 12) {
-            led.set_high();
-        } else {
-            led.set_low();
-        }
+        led.set_high();
+        delay.delay(1.secs());
+        led.set_low();
+        delay.delay(2.secs());
     }
 }
