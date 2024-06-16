@@ -6,11 +6,120 @@ use esp_hal::{
     analog::adc::{Adc, AdcConfig, Attenuation},
     clock::ClockControl,
     delay::Delay,
-    gpio::{Io, Level, Output},
+    gpio::{Io, Level, Output, AnyOutput},
     peripherals::Peripherals,
     prelude::*,
     system::SystemControl,
 };
+
+/* eink display */
+const HEIGHT: usize = 1072;
+const WIDTH: usize = 1448;
+
+struct eink_display {
+    pub mode1: AnyOutput<'static>,
+    pub ckv: AnyOutput<'static>,
+    pub spv: AnyOutput<'static>,
+
+    pub xcl: AnyOutput<'static>,
+    pub xle: AnyOutput<'static>,
+    pub xoe: AnyOutput<'static>,
+    pub xstl: AnyOutput<'static>,
+
+    pub d0: AnyOutput<'static>,
+    pub d1: AnyOutput<'static>,
+    pub d2: AnyOutput<'static>,
+    pub d3: AnyOutput<'static>,
+    pub d4: AnyOutput<'static>,
+    pub d5: AnyOutput<'static>,
+    pub d6: AnyOutput<'static>,
+    pub d7: AnyOutput<'static>,
+
+    pub delay: Delay,
+}
+
+impl eink_display
+{
+    fn start_frame(&mut self) {
+        self.xoe.set_high();
+        self.mode1.set_high();
+        self.spv.set_low();
+        self.ckv.set_low();
+        self.delay.delay(1.micros());
+        self.ckv.set_high();
+        self.spv.set_high();
+    }
+
+    fn end_frame(&mut self) {
+        self.mode1.set_low();
+        self.xoe.set_low();
+    }
+
+    // 1pixel 2 bit, so *2 data
+    // [0, 0] No action
+    // [0, 1] Draw black
+    // [1, 0] Draw white
+    // [1, 1] No action
+    fn write_row(&mut self, row_data: &[u8; WIDTH/4]) {
+        self.xstl.set_low();
+        /* can write 4 pixel for onece */
+        for pos in 0..(WIDTH/4) {
+            let four_pixels = row_data[pos];
+            if four_pixels & 0b00000001 == 0b00000001 {
+                self.d0.set_high();
+            } else {
+                self.d0.set_low();
+            }
+            if four_pixels & 0b00000010 == 0b00000010 {
+                self.d1.set_high();
+            } else {
+                self.d1.set_low();
+            }
+            if four_pixels & 0b00000100 == 0b00000100 {
+                self.d2.set_high();
+            } else {
+                self.d2.set_low();
+            }
+            if four_pixels & 0b00001000 ==  0b0001000 {
+                self.d3.set_high();
+            } else {
+                self.d3.set_low();
+            }
+            if four_pixels & 0b00010000 == 0b00010000 {
+                self.d4.set_high();
+            } else {
+                self.d4.set_low();
+            }
+            if four_pixels & 0b00100000 == 0b00100000 {
+                self.d5.set_high();
+            } else {
+                self.d5.set_low();
+            }
+            if four_pixels & 0b01000000 == 0b01000000 {
+                self.d6.set_high();
+            } else {
+                self.d6.set_low();
+            }
+            if four_pixels & 0b10000000 == 0b10000000 {
+                self.d7.set_high();
+            } else {
+                self.d7.set_low();
+            }
+            self.xcl.set_high();
+            self.xcl.set_low();
+        }
+        self.xstl.set_high();
+        self.xcl.set_high();
+        self.xcl.set_low();
+
+        self.xle.set_high();
+        self.xle.set_low();
+
+        self.ckv.set_low();
+        self.delay.delay(1.micros());
+        self.ckv.set_high();
+    }
+}
 
 #[entry]
 fn main() -> ! {
@@ -21,7 +130,7 @@ fn main() -> ! {
     let delay = Delay::new(&clocks);
 
     let io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
-    let mut led = Output::new(io.pins.gpio15, Level::High);
+    let mut led = AnyOutput::new(io.pins.gpio15, Level::High);
 
     /* sd card */
     /*
@@ -31,84 +140,38 @@ fn main() -> ! {
     SDCARD_MISO = 37
     */
 
-    /* eink display */
-    const HEIGHT: u16 = 1072;
-    const WIDTH: u16 = 1448;
+    let mode1 = AnyOutput::new(io.pins.gpio11, Level::High);
+    let ckv = AnyOutput::new(io.pins.gpio14, Level::High);
+    let spv = AnyOutput::new(io.pins.gpio12, Level::High);
 
-    let mut mode1 = Output::new(io.pins.gpio11, Level::High);
-    let mut ckv = Output::new(io.pins.gpio14, Level::High);
-    let mut spv = Output::new(io.pins.gpio12, Level::High);
+    let xcl = AnyOutput::new(io.pins.gpio39, Level::High);
+    let xle = AnyOutput::new(io.pins.gpio40, Level::High);
+    let xoe = AnyOutput::new(io.pins.gpio38, Level::High);
+    let xstl = AnyOutput::new(io.pins.gpio33, Level::High);
 
-    let mut xcl = Output::new(io.pins.gpio39, Level::High);
-    let mut xle = Output::new(io.pins.gpio40, Level::High);
-    let mut xoe = Output::new(io.pins.gpio38, Level::High);
-    let mut xstl = Output::new(io.pins.gpio33, Level::High);
+    let d0 = AnyOutput::new(io.pins.gpio18, Level::High);
+    let d1 = AnyOutput::new(io.pins.gpio21, Level::High);
+    let d2 = AnyOutput::new(io.pins.gpio16, Level::High);
+    let d3 = AnyOutput::new(io.pins.gpio17, Level::High);
+    let d4 = AnyOutput::new(io.pins.gpio7, Level::High);
+    let d5 = AnyOutput::new(io.pins.gpio9, Level::High);
+    let d6 = AnyOutput::new(io.pins.gpio10, Level::High);
+    let d7 = AnyOutput::new(io.pins.gpio13, Level::High);
 
-    let mut d0 = Output::new(io.pins.gpio18, Level::High);
-    let mut d1 = Output::new(io.pins.gpio21, Level::High);
-    let mut d2 = Output::new(io.pins.gpio16, Level::High);
-    let mut d3 = Output::new(io.pins.gpio17, Level::High);
-    let mut d4 = Output::new(io.pins.gpio7, Level::High);
-    let mut d5 = Output::new(io.pins.gpio9, Level::High);
-    let mut d6 = Output::new(io.pins.gpio10, Level::High);
-    let mut d7 = Output::new(io.pins.gpio13, Level::High);
+    let mut eink_display = eink_display { mode1, ckv, spv, xcl, xle, xoe, xstl, d0, d1, d2, d3, d4, d5, d6, d7, delay };
 
-    for cycle in 0..32 {
-    /* start frame */
-    xoe.set_high();
-    mode1.set_high();
-    spv.set_low();
-    ckv.set_low();
-    delay.delay(1.micros());
-    ckv.set_high();
-    spv.set_high();
-
-    for _line in 0..HEIGHT {
-        /* write row */
-        xstl.set_low();
-        for _i in 0..(WIDTH/4) {
-            /* black b01010101 */
-            /* white b10101010 */
-            /* can write 4 pixel for onece */
-            if cycle < 16 {
-            d0.set_high();
-            d1.set_low();
-            d2.set_high();
-            d3.set_low();
-            d4.set_high();
-            d5.set_low();
-            d6.set_high();
-            d7.set_low();
-            } else {
-            d0.set_low();
-            d1.set_high();
-            d2.set_low();
-            d3.set_high();
-            d4.set_low();
-            d5.set_high();
-            d6.set_low();
-            d7.set_high();
-            }
-
-            xcl.set_high();
-            xcl.set_low();
+    for cycle in 0..8 {
+        eink_display.start_frame();
+        for _line in 0..HEIGHT {
+            let raw_data: [u8; WIDTH/4] =
+                if cycle < 4 {
+                    [0b01010101; WIDTH/4]
+                } else {
+                    [0b10101010; WIDTH/4]
+                };
+            eink_display.write_row(&raw_data);
         }
-
-        xstl.set_high();
-        xcl.set_high();
-        xcl.set_low();
-
-        xle.set_high();
-        xle.set_low();
-
-        ckv.set_low();
-        delay.delay(1.micros());
-        ckv.set_high();
-    }
-
-    /* end frame */
-    mode1.set_low();
-    xoe.set_low();
+        eink_display.end_frame();
     }
 
     loop {
