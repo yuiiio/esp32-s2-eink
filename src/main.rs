@@ -1,6 +1,9 @@
 #![no_std]
 #![no_main]
 
+mod data;
+use data::DEMO_IMAGE;
+
 use esp_backtrace as _;
 use esp_hal::{
     analog::adc::{Adc, AdcConfig, Attenuation},
@@ -203,25 +206,48 @@ fn main() -> ! {
 
     let mut eink_display = EinkDisplay { mode1, ckv, spv, xcl, xle, xoe, xstl, d0, d1, d2, d3, d4, d5, d6, d7, delay };
 
-    loop {
-        led.set_high();
-        for _cycle in 0..4 {
-            eink_display.start_frame();
-            for _line in 0..HEIGHT {
-                let raw_data: [u8; WIDTH/4] = [0b01010101; WIDTH/4];
-                eink_display.write_row(&raw_data);
-            }
-            eink_display.end_frame();
+    for _cycle in 0..4 {
+        eink_display.start_frame();
+        for _line in 0..HEIGHT {
+            let raw_data: [u8; WIDTH/4] = [0b01010101; WIDTH/4];//black
+            eink_display.write_row(&raw_data);
         }
+        eink_display.end_frame();
+    }
 
-        led.set_low();
-        for _cycle in 0..4 {
-            eink_display.start_frame();
-            for _line in 0..HEIGHT {
-                let raw_data: [u8; WIDTH/4] = [0b10101010; WIDTH/4];
-                eink_display.write_row(&raw_data);
-            }
-            eink_display.end_frame();
+    for _cycle in 0..4 {
+        eink_display.start_frame();
+        for _line in 0..HEIGHT {
+            let raw_data: [u8; WIDTH/4] = [0b10101010; WIDTH/4];//white
+            eink_display.write_row(&raw_data);
         }
+        eink_display.end_frame();
+    }
+
+    for grayscale in 0..14 {
+        let mut pos: usize = 0;
+        eink_display.start_frame();
+        for _line in 0..HEIGHT {
+            let mut buf: [u8; WIDTH/4] = [0b10101010; WIDTH/4];
+            for i in 0..(WIDTH/4) {
+                let mut b: u8 = 0;
+                if (DEMO_IMAGE[pos] >> 4) <= grayscale { b |= 0x40 };
+                if (DEMO_IMAGE[pos] & 0x0f) <= grayscale { b |= 0x10 };
+                pos += 1;
+                if (DEMO_IMAGE[pos] >> 4) <= grayscale { b |= 0x04 };
+                if (DEMO_IMAGE[pos] & 0x0f) <= grayscale { b |= 0x01 };
+                pos += 1;
+                buf[i] = b;
+            }
+            eink_display.write_row(&buf);
+        }
+        eink_display.end_frame();
+    }
+
+    loop {
+        led.set_low();
+        delay.delay(1.secs());
+        led.set_high();
+        delay.delay(1.secs());
     }
 }
