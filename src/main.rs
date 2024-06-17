@@ -6,11 +6,33 @@ use esp_hal::{
     analog::adc::{Adc, AdcConfig, Attenuation},
     clock::ClockControl,
     delay::Delay,
-    gpio::{Io, Level, Output, AnyOutput},
+    gpio::{Io, Level, Output, AnyOutput, NO_PIN},
     peripherals::Peripherals,
     prelude::*,
     system::SystemControl,
+    spi::{SpiMode, master::Spi},
 };
+use embedded_sdmmc::{
+    Mode, VolumeIdx,
+    sdcard::{SdCard, DummyCsPin},
+    VolumeManager,
+};
+use embedded_hal_bus::spi::ExclusiveDevice;
+
+struct FakeTimesource {}
+
+impl embedded_sdmmc::TimeSource for FakeTimesource {
+    fn get_timestamp(&self) -> embedded_sdmmc::Timestamp {
+        embedded_sdmmc::Timestamp {
+            year_since_1970: 0,
+            zero_indexed_month: 0,
+            zero_indexed_day: 0,
+            hours: 0,
+            minutes: 0,
+            seconds: 0,
+        }
+    }
+}
 
 /* eink display */
 const HEIGHT: usize = 1072;
@@ -136,11 +158,29 @@ fn main() -> ! {
     let mut led = AnyOutput::new(io.pins.gpio15, Level::High);
 
     /* sd card */
+    let sclk = io.pins.gpio36;
+    let miso = io.pins.gpio37;
+    let mosi = io.pins.gpio35;
+    let cs = Output::new(io.pins.gpio34, Level::Low);
+
+    let spi = Spi::new(
+        peripherals.SPI2,
+        400u32.kHz(),
+        SpiMode::Mode0,
+        &clocks,
+    ).with_pins(Some(sclk), Some(mosi), Some(miso), NO_PIN);
+
+    let spi_device = ExclusiveDevice::new_no_delay(spi, DummyCsPin).unwrap();
+
+    let sdcard = SdCard::new(spi_device, cs, delay);
+
+    let mut volume_manager = VolumeManager::new(sdcard, FakeTimesource{});
+
     /*
-    SDCARD_CS = 34
-    SDCARD_MOSI 35
-    SDCARD_SCLK = 36
-    SDCARD_MISO = 37
+    let mut volume0 = volume_manager.open_volume(VolumeIdx(0)).unwrap();
+    let mut root_dir = volume0.open_root_dir().unwrap();
+    if let Ok(file) = root_dir.open_file_in_dir("MY_FILE.TXT", Mode::ReadOnly) {
+    }
     */
 
     let mode1 = AnyOutput::new(io.pins.gpio11, Level::High);
