@@ -15,7 +15,7 @@ esp-backtrace = { version = "0.11.0", features = [
 esp-hal = { git = "https://github.com/esp-rs/esp-hal.git", features = [ "esp32s2" ] }
 esp-println = { version = "0.9.0", features = ["esp32s2", "log"] }
 log = { version = "0.4.20" }
-embedded-sdmmc = "0.7.0"
+embedded-sdmmc = { git = "https://github.com/rust-embedded-community/embedded-sdmmc-rs.git" }
 embedded-hal-bus = "0.2.0"
 [profile.dev]
 # Rust debug is too slow. 
