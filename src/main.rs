@@ -16,7 +16,7 @@ use esp_hal::{
 const HEIGHT: usize = 1072;
 const WIDTH: usize = 1448;
 
-struct eink_display {
+struct EinkDisplay {
     pub mode1: AnyOutput<'static>,
     pub ckv: AnyOutput<'static>,
     pub spv: AnyOutput<'static>,
@@ -38,8 +38,9 @@ struct eink_display {
     pub delay: Delay,
 }
 
-impl eink_display
+impl EinkDisplay
 {
+    #[inline(always)]
     fn start_frame(&mut self) {
         self.xoe.set_high();
         self.mode1.set_high();
@@ -50,6 +51,7 @@ impl eink_display
         self.spv.set_high();
     }
 
+    #[inline(always)]
     fn end_frame(&mut self) {
         self.mode1.set_low();
         self.xoe.set_low();
@@ -60,6 +62,7 @@ impl eink_display
     // [0, 1] Draw black
     // [1, 0] Draw white
     // [1, 1] No action
+    #[inline(always)]
     fn write_row(&mut self, row_data: &[u8; WIDTH/4]) {
         self.xstl.set_low();
         /* can write 4 pixel for onece */
@@ -158,26 +161,27 @@ fn main() -> ! {
     let d6 = AnyOutput::new(io.pins.gpio10, Level::High);
     let d7 = AnyOutput::new(io.pins.gpio13, Level::High);
 
-    let mut eink_display = eink_display { mode1, ckv, spv, xcl, xle, xoe, xstl, d0, d1, d2, d3, d4, d5, d6, d7, delay };
-
-    for cycle in 0..8 {
-        eink_display.start_frame();
-        for _line in 0..HEIGHT {
-            let raw_data: [u8; WIDTH/4] =
-                if cycle < 4 {
-                    [0b01010101; WIDTH/4]
-                } else {
-                    [0b10101010; WIDTH/4]
-                };
-            eink_display.write_row(&raw_data);
-        }
-        eink_display.end_frame();
-    }
+    let mut eink_display = EinkDisplay { mode1, ckv, spv, xcl, xle, xoe, xstl, d0, d1, d2, d3, d4, d5, d6, d7, delay };
 
     loop {
         led.set_high();
-        delay.delay(1.secs());
+        for _cycle in 0..4 {
+            eink_display.start_frame();
+            for _line in 0..HEIGHT {
+                let raw_data: [u8; WIDTH/4] = [0b01010101; WIDTH/4];
+                eink_display.write_row(&raw_data);
+            }
+            eink_display.end_frame();
+        }
+
         led.set_low();
-        delay.delay(2.secs());
+        for _cycle in 0..4 {
+            eink_display.start_frame();
+            for _line in 0..HEIGHT {
+                let raw_data: [u8; WIDTH/4] = [0b10101010; WIDTH/4];
+                eink_display.write_row(&raw_data);
+            }
+            eink_display.end_frame();
+        }
     }
 }
