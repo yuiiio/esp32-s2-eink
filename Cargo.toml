@@ -17,6 +17,8 @@ esp-println = { version = "0.9.0", features = ["esp32s2", "log"] }
 log = { version = "0.4.20" }
 embedded-sdmmc = { git = "https://github.com/rust-embedded-community/embedded-sdmmc-rs.git" }
 embedded-hal-bus = "0.2.0"
+usb-device="0.3.2"
+usbd-serial="0.2.2"
 [profile.dev]
 # Rust debug is too slow. 
 # For debug builds always builds with some optimization

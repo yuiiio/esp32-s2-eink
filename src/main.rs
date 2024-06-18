@@ -4,17 +4,26 @@
 mod data;
 use data::DEMO_IMAGE;
 
+
+use core::ptr::addr_of_mut;
+
 use esp_backtrace as _;
 use esp_hal::{
     analog::adc::{Adc, AdcConfig, Attenuation},
     clock::ClockControl,
     delay::Delay,
     gpio::{Io, Level, Output, AnyOutput, NO_PIN},
+    otg_fs::{Usb, UsbBus},
     peripherals::Peripherals,
     prelude::*,
     system::SystemControl,
     spi::{SpiMode, master::Spi},
 };
+use usb_device::prelude::{UsbDeviceBuilder, UsbVidPid};
+use usbd_serial::{SerialPort, USB_CLASS_CDC};
+
+static mut EP_MEMORY: [u32; 1024] = [0; 1024];
+
 use embedded_sdmmc::{
     Mode, VolumeIdx,
     sdcard::{SdCard, DummyCsPin},
@@ -159,6 +168,51 @@ fn main() -> ! {
 
     let io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
     let mut led = AnyOutput::new(io.pins.gpio15, Level::High);
+
+    /*usb serial debug*/
+    let usb = Usb::new(peripherals.USB0, io.pins.gpio19, io.pins.gpio20);
+    let usb_bus = UsbBus::new(usb, unsafe { &mut *addr_of_mut!(EP_MEMORY) });
+
+    let mut serial = SerialPort::new(&usb_bus);
+
+    let mut usb_dev = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x303A, 0x3001))
+        .device_class(USB_CLASS_CDC)
+        .build();
+    
+    'outer: loop {
+        if !usb_dev.poll(&mut [&mut serial]) {
+            continue;
+        }
+
+        let mut buf = [0u8; 64];
+
+        match serial.read(&mut buf) {
+            Ok(count) if count > 0 => {
+                // Echo back in upper case
+                for c in buf[0..count].iter_mut() {
+                    if *c == 0x63 { // c
+                        break 'outer;
+                    }
+                    if 0x61 <= *c && *c <= 0x7a {
+                        *c &= !0x20;
+                    }
+                }
+
+                let mut write_offset = 0;
+                while write_offset < count {
+                    match serial.write(&buf[write_offset..count]) {
+                        Ok(len) => { 
+                            if len > 0 {
+                                write_offset += len;
+                            }
+                        },
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
 
     /* sd card */
     let sclk = io.pins.gpio36;
