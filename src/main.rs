@@ -164,7 +164,7 @@ fn main() -> ! {
     let sclk = io.pins.gpio36;
     let miso = io.pins.gpio37;
     let mosi = io.pins.gpio35;
-    let cs = Output::new(io.pins.gpio34, Level::Low);
+    let cs = Output::new(io.pins.gpio34, Level::High);
 
     let spi = Spi::new(
         peripherals.SPI2,
@@ -224,7 +224,7 @@ fn main() -> ! {
         eink_display.end_frame();
     }
 
-    for grayscale in 0..14 {
+    for grayscale in 0..11 {
         let mut pos: usize = 0;
         eink_display.start_frame();
         for _line in 0..HEIGHT {
