@@ -4,8 +4,8 @@
 mod data;
 use data::DEMO_IMAGE;
 
-
 use core::ptr::addr_of_mut;
+use core::fmt::Write;
 
 use esp_backtrace as _;
 use esp_hal::{
@@ -23,6 +23,14 @@ use usb_device::prelude::{UsbDeviceBuilder, UsbVidPid};
 use usbd_serial::{SerialPort, USB_CLASS_CDC};
 
 static mut EP_MEMORY: [u32; 1024] = [0; 1024];
+
+struct SerialWrapper<'b, B: usb_device::class_prelude::UsbBus>(SerialPort<'b, B>);
+impl<B: usb_device::class_prelude::UsbBus> core::fmt::Write for SerialWrapper<'_, B> {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        let _ = self.0.write(s.as_bytes());
+        Ok(())
+    }
+}
 
 use embedded_sdmmc::{
     Mode, VolumeIdx,
@@ -175,18 +183,20 @@ fn main() -> ! {
 
     let mut serial = SerialPort::new(&usb_bus);
 
+    let mut serial = SerialWrapper(serial);
+
     let mut usb_dev = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x303A, 0x3001))
         .device_class(USB_CLASS_CDC)
         .build();
     
     'outer: loop {
-        if !usb_dev.poll(&mut [&mut serial]) {
+        if !usb_dev.poll(&mut [&mut serial.0]) {
             continue;
         }
 
         let mut buf = [0u8; 64];
 
-        match serial.read(&mut buf) {
+        match serial.0.read(&mut buf) {
             Ok(count) if count > 0 => {
                 // Echo back in upper case
                 for c in buf[0..count].iter_mut() {
@@ -200,7 +210,7 @@ fn main() -> ! {
 
                 let mut write_offset = 0;
                 while write_offset < count {
-                    match serial.write(&buf[write_offset..count]) {
+                    match serial.0.write(&buf[write_offset..count]) {
                         Ok(len) => { 
                             if len > 0 {
                                 write_offset += len;
@@ -213,6 +223,8 @@ fn main() -> ! {
             _ => {}
         }
     }
+
+    writeln!(serial, "\nSuccess serialWrapper test\n").unwrap();
 
     /* sd card */
     let sclk = io.pins.gpio36;
