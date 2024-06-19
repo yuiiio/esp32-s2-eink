@@ -251,8 +251,36 @@ fn main() -> ! {
 
     let mut volume_manager = VolumeManager::new(sdcard, FakeTimesource{});
 
+    let mut img_buf = [0u8; WIDTH*HEIGHT/2]; // too big for ram?
+    
     match volume_manager.open_volume(VolumeIdx(0)) {
-        Ok(volume0) => {  },
+        Ok(mut volume0) => {  
+            let mut root_dir = volume0.open_root_dir().unwrap();
+            /*
+            let mut example_file = root_dir.open_file_in_dir("MY_FILE.TXT", Mode::ReadOnly).unwrap();
+            let mut txt1 = [0u8; 2];
+            example_file.read(&mut txt1).unwrap();
+            let mut txt2 = [0u8; 3];
+            example_file.read(&mut txt2).unwrap();
+            loop {
+                if usb_dev.poll(&mut [&mut serial.0]) {
+                    break;
+                }
+            }
+            writeln!(serial, "MY_FILE.TXT: txt1: {:?}\n", txt1).unwrap();
+            writeln!(serial, "MY_FILE.TXT: txt2: {:?}\n", txt2).unwrap();
+            */
+            let mut file = root_dir.open_file_in_dir("output.tif", Mode::ReadOnly).unwrap();
+            let mut tiff_header = [0u8; 8];
+            file.read(&mut tiff_header).unwrap();// first 8 bytes is annotation header
+            loop {
+                if usb_dev.poll(&mut [&mut serial.0]) {
+                    break;
+                }
+            }
+            writeln!(serial, "output.tif header: {:?}\n", tiff_header).unwrap();
+            file.read(&mut img_buf).unwrap();
+        },
         Err(error) => {
             loop {
                 if usb_dev.poll(&mut [&mut serial.0]) {
@@ -262,11 +290,6 @@ fn main() -> ! {
             writeln!(serial, "open_volume Err {:?}\n", error).unwrap();
         },
     };
-    /*
-    let mut root_dir = volume0.open_root_dir().unwrap();
-    if let Ok(file) = root_dir.open_file_in_dir("MY_FILE.TXT", Mode::ReadOnly) {
-    }
-    */
 
     let mode1 = AnyOutput::new(io.pins.gpio11, Level::High);
     let ckv = AnyOutput::new(io.pins.gpio14, Level::High);
@@ -313,11 +336,11 @@ fn main() -> ! {
             let mut buf: [u8; WIDTH/4] = [0b10101010; WIDTH/4];
             for i in 0..(WIDTH/4) {
                 let mut b: u8 = 0;
-                if (DEMO_IMAGE[pos] >> 4) <= grayscale { b |= 0x40 };
-                if (DEMO_IMAGE[pos] & 0x0f) <= grayscale { b |= 0x10 };
+                if (img_buf[pos] >> 4) <= grayscale { b |= 0x40 };
+                if (img_buf[pos] & 0x0f) <= grayscale { b |= 0x10 };
                 pos += 1;
-                if (DEMO_IMAGE[pos] >> 4) <= grayscale { b |= 0x04 };
-                if (DEMO_IMAGE[pos] & 0x0f) <= grayscale { b |= 0x01 };
+                if (img_buf[pos] >> 4) <= grayscale { b |= 0x04 };
+                if (img_buf[pos] & 0x0f) <= grayscale { b |= 0x01 };
                 pos += 1;
                 buf[i] = b;
             }
