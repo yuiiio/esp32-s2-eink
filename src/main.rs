@@ -1,8 +1,14 @@
 #![no_std]
 #![no_main]
+#![feature(allocator_api)]
+
 
 mod data;
 use data::DEMO_IMAGE;
+extern crate alloc;
+use alloc::vec::Vec;
+
+use esp_alloc;
 
 use core::ptr::addr_of_mut;
 use core::fmt::Write;
@@ -18,9 +24,19 @@ use esp_hal::{
     prelude::*,
     system::SystemControl,
     spi::{SpiMode, master::Spi},
+    psram,
 };
 use usb_device::prelude::{UsbDeviceBuilder, UsbVidPid};
 use usbd_serial::{SerialPort, USB_CLASS_CDC};
+
+#[global_allocator]
+static PSRAM_ALLOCATOR: esp_alloc::EspHeap = esp_alloc::EspHeap::empty();
+
+fn init_psram_heap() {
+    unsafe {
+        PSRAM_ALLOCATOR.init(psram::psram_vaddr_start() as *mut u8, psram::PSRAM_BYTES);
+    }
+}
 
 static mut EP_MEMORY: [u32; 1024] = [0; 1024];
 
@@ -169,6 +185,9 @@ impl EinkDisplay
 #[entry]
 fn main() -> ! {
     let peripherals = Peripherals::take();
+    psram::init_psram(peripherals.PSRAM);
+    init_psram_heap();
+
     let system = SystemControl::new(peripherals.SYSTEM);
 
     let clocks = ClockControl::max(system.clock_control).freeze();
@@ -251,7 +270,12 @@ fn main() -> ! {
 
     let mut volume_manager = VolumeManager::new(sdcard, FakeTimesource{});
 
-    let mut img_buf = [0u8; WIDTH*HEIGHT/2]; // too big for ram?
+    const BUF_SIZE: usize = WIDTH*HEIGHT/2;
+    let mut img_buf: Vec<u8, _> = Vec::with_capacity_in(BUF_SIZE, &PSRAM_ALLOCATOR);
+    for _i in 0..BUF_SIZE {
+        img_buf.push(0u8);
+    }
+    // too big for dram? so use psram(2M)
     
     match volume_manager.open_volume(VolumeIdx(0)) {
         Ok(mut volume0) => {  

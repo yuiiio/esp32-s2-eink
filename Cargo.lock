@@ -268,6 +268,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5443807d6dff69373d433ab9ef5378ad8df50ca6298caf15de6e52e24aaf54d5"
 
 [[package]]
+name = "esp-alloc"
+version = "0.4.0"
+source = "git+https://github.com/esp-rs/esp-hal.git#2d90fa30217c4e4930c3c674a0766cb54d609a98"
+dependencies = [
+ "critical-section",
+ "linked_list_allocator",
+]
+
+[[package]]
 name = "esp-backtrace"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -279,7 +288,7 @@ dependencies = [
 [[package]]
 name = "esp-build"
 version = "0.1.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#3b9a4938cb0705a8a529a42f400687a003b0c6a6"
+source = "git+https://github.com/esp-rs/esp-hal.git#2d90fa30217c4e4930c3c674a0766cb54d609a98"
 dependencies = [
  "quote",
  "syn 2.0.66",
@@ -288,8 +297,8 @@ dependencies = [
 
 [[package]]
 name = "esp-hal"
-version = "0.17.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#3b9a4938cb0705a8a529a42f400687a003b0c6a6"
+version = "0.18.0"
+source = "git+https://github.com/esp-rs/esp-hal.git#2d90fa30217c4e4930c3c674a0766cb54d609a98"
 dependencies = [
  "basic-toml",
  "bitfield",
@@ -324,8 +333,8 @@ dependencies = [
 
 [[package]]
 name = "esp-hal-procmacros"
-version = "0.10.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#3b9a4938cb0705a8a529a42f400687a003b0c6a6"
+version = "0.11.0"
+source = "git+https://github.com/esp-rs/esp-hal.git#2d90fa30217c4e4930c3c674a0766cb54d609a98"
 dependencies = [
  "darling",
  "document-features",
@@ -340,8 +349,8 @@ dependencies = [
 
 [[package]]
 name = "esp-metadata"
-version = "0.1.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#3b9a4938cb0705a8a529a42f400687a003b0c6a6"
+version = "0.1.1"
+source = "git+https://github.com/esp-rs/esp-hal.git#2d90fa30217c4e4930c3c674a0766cb54d609a98"
 dependencies = [
  "basic-toml",
  "lazy_static",
@@ -362,7 +371,7 @@ dependencies = [
 [[package]]
 name = "esp-riscv-rt"
 version = "0.8.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#3b9a4938cb0705a8a529a42f400687a003b0c6a6"
+source = "git+https://github.com/esp-rs/esp-hal.git#2d90fa30217c4e4930c3c674a0766cb54d609a98"
 dependencies = [
  "document-features",
  "riscv",
@@ -388,9 +397,11 @@ version = "0.1.0"
 dependencies = [
  "embedded-hal-bus",
  "embedded-sdmmc",
+ "esp-alloc",
  "esp-backtrace",
  "esp-hal",
  "esp-println",
+ "heapless",
  "log",
  "usb-device",
  "usbd-serial",
@@ -398,8 +409,8 @@ dependencies = [
 
 [[package]]
 name = "esp32s2"
-version = "0.21.0"
-source = "git+https://github.com/esp-rs/esp-pacs/?rev=9a36a93#9a36a9375a1dfd1b51a559ee76f144935a7e8ed8"
+version = "0.22.0"
+source = "git+https://github.com/esp-rs/esp-pacs?rev=a7c72f7#a7c72f72c4cc50d1595a0d5a395250306d741fed"
 dependencies = [
  "critical-section",
  "vcell",
@@ -491,6 +502,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
+name = "linked_list_allocator"
+version = "0.10.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9afa463f5405ee81cdb9cc2baf37e08ec7e4c8209442b5d72c04cfb2cd6e6286"
+
+[[package]]
 name = "litrs"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -552,9 +569,9 @@ checksum = "8d5439c4ad607c3c23abf66de8c8bf57ba8adcd1f129e699851a6e43935d339d"
 
 [[package]]
 name = "object"
-version = "0.35.0"
+version = "0.36.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8ec7ab813848ba4522158d5517a6093db1ded27575b070f4177b8d12b41db5e"
+checksum = "576dfe1fc8f9df304abb159d767a29d0476f7750fbf8aa7ad07816004a207434"
 dependencies = [
  "flate2",
  "memchr",
