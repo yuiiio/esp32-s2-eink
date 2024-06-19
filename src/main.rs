@@ -27,6 +27,13 @@ use esp_hal::{
 use usb_device::prelude::{UsbDeviceBuilder, UsbVidPid};
 use usbd_serial::{SerialPort, USB_CLASS_CDC};
 
+use embedded_sdmmc::{
+    Mode, VolumeIdx,
+    sdcard::{SdCard, DummyCsPin},
+    VolumeManager,
+};
+use embedded_hal_bus::spi::ExclusiveDevice;
+
 #[global_allocator]
 static PSRAM_ALLOCATOR: esp_alloc::EspHeap = esp_alloc::EspHeap::empty();
 
@@ -46,13 +53,6 @@ impl<B: usb_device::class_prelude::UsbBus> core::fmt::Write for SerialWrapper<'_
     }
 }
 
-use embedded_sdmmc::{
-    Mode, VolumeIdx,
-    sdcard::{SdCard, DummyCsPin},
-    VolumeManager,
-};
-use embedded_hal_bus::spi::ExclusiveDevice;
-
 struct FakeTimesource {}
 
 impl embedded_sdmmc::TimeSource for FakeTimesource {
@@ -71,6 +71,8 @@ impl embedded_sdmmc::TimeSource for FakeTimesource {
 /* eink display */
 const HEIGHT: usize = 1072;
 const WIDTH: usize = 1448;
+
+const FOUR_BPP_BUF_SIZE: usize = WIDTH*HEIGHT*4/8;
 
 struct EinkDisplay {
     pub mode1: AnyOutput<'static>,
@@ -180,6 +182,50 @@ impl EinkDisplay
     }
 }
 
+fn open_4bpp_image<D: embedded_sdmmc::BlockDevice, T: embedded_sdmmc::TimeSource, U: core::alloc::Allocator>(volume_manager: &mut VolumeManager<D, T>, img_buf: &mut Vec<u8, U>, file_name: &str) {
+    match volume_manager.open_volume(VolumeIdx(0)) {
+        Ok(mut volume0) => {  
+            let mut root_dir = volume0.open_root_dir().unwrap();
+            /*
+            let mut example_file = root_dir.open_file_in_dir("MY_FILE.TXT", Mode::ReadOnly).unwrap();
+            let mut txt1 = [0u8; 2];
+            example_file.read(&mut txt1).unwrap();
+            let mut txt2 = [0u8; 3];
+            example_file.read(&mut txt2).unwrap();
+            loop {
+                if usb_dev.poll(&mut [&mut serial.0]) {
+                    break;
+                }
+            }
+            writeln!(serial, "MY_FILE.TXT: txt1: {:?}\n", txt1).unwrap();
+            writeln!(serial, "MY_FILE.TXT: txt2: {:?}\n", txt2).unwrap();
+            */
+            let mut file = root_dir.open_file_in_dir(file_name, Mode::ReadOnly).unwrap();
+            let mut tiff_header = [0u8; 8];
+            file.read(&mut tiff_header).unwrap();// first 8 bytes is annotation header
+            /*
+            loop {
+                if usb_dev.poll(&mut [&mut serial.0]) {
+                    break;
+                }
+            }
+            writeln!(serial, "output.tif header: {:?}\n", tiff_header).unwrap();
+            */
+            file.read(img_buf).unwrap();
+        },
+        Err(error) => {
+            /*
+            loop {
+                if usb_dev.poll(&mut [&mut serial.0]) {
+                    break;
+                }
+            }
+            writeln!(serial, "open_volume Err {:?}\n", error).unwrap();
+            */
+        },
+    };
+}
+
 #[entry]
 fn main() -> ! {
     let peripherals = Peripherals::take();
@@ -273,53 +319,12 @@ fn main() -> ! {
 
     let mut volume_manager = VolumeManager::new(sdcard, FakeTimesource{});
 
-    const BUF_SIZE: usize = WIDTH*HEIGHT/2;
-    let mut img_buf: Vec<u8, _> = Vec::with_capacity_in(BUF_SIZE, &PSRAM_ALLOCATOR);
-    for _i in 0..BUF_SIZE {
+    let mut img_buf: Vec<u8, _> = Vec::with_capacity_in(FOUR_BPP_BUF_SIZE, &PSRAM_ALLOCATOR);
+    for _i in 0..FOUR_BPP_BUF_SIZE {
         img_buf.push(0u8);
     }
     // too big for dram? so use psram(2M)
     
-    match volume_manager.open_volume(VolumeIdx(0)) {
-        Ok(mut volume0) => {  
-            let mut root_dir = volume0.open_root_dir().unwrap();
-            /*
-            let mut example_file = root_dir.open_file_in_dir("MY_FILE.TXT", Mode::ReadOnly).unwrap();
-            let mut txt1 = [0u8; 2];
-            example_file.read(&mut txt1).unwrap();
-            let mut txt2 = [0u8; 3];
-            example_file.read(&mut txt2).unwrap();
-            loop {
-                if usb_dev.poll(&mut [&mut serial.0]) {
-                    break;
-                }
-            }
-            writeln!(serial, "MY_FILE.TXT: txt1: {:?}\n", txt1).unwrap();
-            writeln!(serial, "MY_FILE.TXT: txt2: {:?}\n", txt2).unwrap();
-            */
-            let mut file = root_dir.open_file_in_dir("output.tif", Mode::ReadOnly).unwrap();
-            let mut tiff_header = [0u8; 8];
-            file.read(&mut tiff_header).unwrap();// first 8 bytes is annotation header
-            /*
-            loop {
-                if usb_dev.poll(&mut [&mut serial.0]) {
-                    break;
-                }
-            }
-            writeln!(serial, "output.tif header: {:?}\n", tiff_header).unwrap();
-            */
-            file.read(&mut img_buf).unwrap();
-        },
-        Err(error) => {
-            loop {
-                if usb_dev.poll(&mut [&mut serial.0]) {
-                    break;
-                }
-            }
-            writeln!(serial, "open_volume Err {:?}\n", error).unwrap();
-        },
-    };
-
     let mode1 = AnyOutput::new(io.pins.gpio11, Level::High);
     let ckv = AnyOutput::new(io.pins.gpio14, Level::High);
     let spv = AnyOutput::new(io.pins.gpio12, Level::High);
@@ -340,6 +345,7 @@ fn main() -> ! {
 
     let mut eink_display = EinkDisplay { mode1, ckv, spv, xcl, xle, xoe, xstl, d0, d1, d2, d3, d4, d5, d6, d7, delay };
 
+    /*
     for _cycle in 0..4 {
         eink_display.start_frame();
         for _line in 0..HEIGHT {
@@ -357,31 +363,75 @@ fn main() -> ! {
         }
         eink_display.end_frame();
     }
-
-    for grayscale in 0..11 {
-        let mut pos: usize = 0;
-        eink_display.start_frame();
-        for _line in 0..HEIGHT {
-            let mut buf: [u8; WIDTH/4] = [0b10101010; WIDTH/4];
-            for i in 0..(WIDTH/4) {
-                let mut b: u8 = 0;
-                if (img_buf[pos] >> 4) <= grayscale { b |= 0x40 };
-                if (img_buf[pos] & 0x0f) <= grayscale { b |= 0x10 };
-                pos += 1;
-                if (img_buf[pos] >> 4) <= grayscale { b |= 0x04 };
-                if (img_buf[pos] & 0x0f) <= grayscale { b |= 0x01 };
-                pos += 1;
-                buf[i] = b;
-            }
-            eink_display.write_row(&buf);
-        }
-        eink_display.end_frame();
-    }
+    */
 
     loop {
         led.set_low();
-        delay.delay(1.secs());
+        for i in 0..FOUR_BPP_BUF_SIZE {
+            img_buf[i] = 0u8;
+        }
+        open_4bpp_image(&mut volume_manager, &mut img_buf, "02.tif");
+        for _cycle in 0..4 {
+            eink_display.start_frame();
+            for _line in 0..HEIGHT {
+                let raw_data: [u8; WIDTH/4] = [0b10101010; WIDTH/4];//white
+                eink_display.write_row(&raw_data);
+            }
+            eink_display.end_frame();
+        }
+        for grayscale in 0..11 {
+            let mut pos: usize = 0;
+            eink_display.start_frame();
+            for _line in 0..HEIGHT {
+                let mut buf: [u8; WIDTH/4] = [0b10101010; WIDTH/4];
+                for i in 0..(WIDTH/4) {
+                    let mut b: u8 = 0;
+                    if (img_buf[pos] >> 4) <= grayscale { b |= 0x40 };
+                    if (img_buf[pos] & 0x0f) <= grayscale { b |= 0x10 };
+                    pos += 1;
+                    if (img_buf[pos] >> 4) <= grayscale { b |= 0x04 };
+                    if (img_buf[pos] & 0x0f) <= grayscale { b |= 0x01 };
+                    pos += 1;
+                    buf[i] = b;
+                }
+                eink_display.write_row(&buf);
+            }
+            eink_display.end_frame();
+        }
+
+        for i in 0..FOUR_BPP_BUF_SIZE {
+            img_buf[i] = 0u8;
+        }
+        open_4bpp_image(&mut volume_manager, &mut img_buf, "01.tif");
+        for _cycle in 0..4 {
+            eink_display.start_frame();
+            for _line in 0..HEIGHT {
+                let raw_data: [u8; WIDTH/4] = [0b10101010; WIDTH/4];//white
+                eink_display.write_row(&raw_data);
+            }
+            eink_display.end_frame();
+        }
+        //delay.delay(1.secs());
         led.set_high();
-        delay.delay(1.secs());
+        for grayscale in 0..11 {
+            let mut pos: usize = 0;
+            eink_display.start_frame();
+            for _line in 0..HEIGHT {
+                let mut buf: [u8; WIDTH/4] = [0b10101010; WIDTH/4];
+                for i in 0..(WIDTH/4) {
+                    let mut b: u8 = 0;
+                    if (img_buf[pos] >> 4) <= grayscale { b |= 0x40 };
+                    if (img_buf[pos] & 0x0f) <= grayscale { b |= 0x10 };
+                    pos += 1;
+                    if (img_buf[pos] >> 4) <= grayscale { b |= 0x04 };
+                    if (img_buf[pos] & 0x0f) <= grayscale { b |= 0x01 };
+                    pos += 1;
+                    buf[i] = b;
+                }
+                eink_display.write_row(&buf);
+            }
+            eink_display.end_frame();
+        }
+        //delay.delay(1.secs());
     }
 }
