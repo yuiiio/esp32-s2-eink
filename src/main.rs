@@ -205,6 +205,8 @@ fn main() -> ! {
         .device_class(USB_CLASS_CDC)
         .build();
     
+    /* debug */
+    /*
     'outer: loop {
         if !usb_dev.poll(&mut [&mut serial.0]) {
             continue;
@@ -241,6 +243,7 @@ fn main() -> ! {
     }
 
     writeln!(serial, "\nSuccess serialWrapper test\n").unwrap();
+    */
 
     /* sd card */
     let sclk = io.pins.gpio36;
@@ -259,12 +262,14 @@ fn main() -> ! {
 
     let sdcard = SdCard::new(spi_device, cs, delay);
 
+    /*
     loop {
         if usb_dev.poll(&mut [&mut serial.0]) {
             break;
         }
     }
     writeln!(serial, "Card size is {} bytes\n", sdcard.num_bytes().unwrap()).unwrap();
+    */
 
     let mut volume_manager = VolumeManager::new(sdcard, FakeTimesource{});
 
@@ -295,12 +300,14 @@ fn main() -> ! {
             let mut file = root_dir.open_file_in_dir("output.tif", Mode::ReadOnly).unwrap();
             let mut tiff_header = [0u8; 8];
             file.read(&mut tiff_header).unwrap();// first 8 bytes is annotation header
+            /*
             loop {
                 if usb_dev.poll(&mut [&mut serial.0]) {
                     break;
                 }
             }
             writeln!(serial, "output.tif header: {:?}\n", tiff_header).unwrap();
+            */
             file.read(&mut img_buf).unwrap();
         },
         Err(error) => {
