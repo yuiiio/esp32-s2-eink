@@ -181,8 +181,7 @@ fn main() -> ! {
     let usb = Usb::new(peripherals.USB0, io.pins.gpio19, io.pins.gpio20);
     let usb_bus = UsbBus::new(usb, unsafe { &mut *addr_of_mut!(EP_MEMORY) });
 
-    let mut serial = SerialPort::new(&usb_bus);
-
+    let serial = SerialPort::new(&usb_bus);
     let mut serial = SerialWrapper(serial);
 
     let mut usb_dev = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x303A, 0x3001))
@@ -243,10 +242,27 @@ fn main() -> ! {
 
     let sdcard = SdCard::new(spi_device, cs, delay);
 
+    loop {
+        if usb_dev.poll(&mut [&mut serial.0]) {
+            break;
+        }
+    }
+    writeln!(serial, "Card size is {} bytes\n", sdcard.num_bytes().unwrap()).unwrap();
+
     let mut volume_manager = VolumeManager::new(sdcard, FakeTimesource{});
 
+    match volume_manager.open_volume(VolumeIdx(0)) {
+        Ok(volume0) => {  },
+        Err(error) => {
+            loop {
+                if usb_dev.poll(&mut [&mut serial.0]) {
+                    break;
+                }
+            }
+            writeln!(serial, "open_volume Err {:?}\n", error).unwrap();
+        },
+    };
     /*
-    let mut volume0 = volume_manager.open_volume(VolumeIdx(0)).unwrap();
     let mut root_dir = volume0.open_root_dir().unwrap();
     if let Ok(file) = root_dir.open_file_in_dir("MY_FILE.TXT", Mode::ReadOnly) {
     }
