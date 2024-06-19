@@ -1,3 +1,6 @@
+#SdCard (embedded-sdmmc-rs)
+supports MBR FAT32 and **need [W95 FAT32] type(0x0c)**
+
 can use convert-to-eink-image.sh to convert image
 
 and inject image data to data.rs
