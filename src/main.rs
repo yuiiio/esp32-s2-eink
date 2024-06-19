@@ -3,8 +3,6 @@
 #![feature(allocator_api)]
 
 
-mod data;
-use data::DEMO_IMAGE;
 extern crate alloc;
 use alloc::vec::Vec;
 
