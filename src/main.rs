@@ -345,26 +345,6 @@ fn main() -> ! {
 
     let mut eink_display = EinkDisplay { mode1, ckv, spv, xcl, xle, xoe, xstl, d0, d1, d2, d3, d4, d5, d6, d7, delay };
 
-    /*
-    for _cycle in 0..4 {
-        eink_display.start_frame();
-        for _line in 0..HEIGHT {
-            let raw_data: [u8; WIDTH/4] = [0b01010101; WIDTH/4];//black
-            eink_display.write_row(&raw_data);
-        }
-        eink_display.end_frame();
-    }
-
-    for _cycle in 0..4 {
-        eink_display.start_frame();
-        for _line in 0..HEIGHT {
-            let raw_data: [u8; WIDTH/4] = [0b10101010; WIDTH/4];//white
-            eink_display.write_row(&raw_data);
-        }
-        eink_display.end_frame();
-    }
-    */
-
     loop {
         led.set_low();
         for i in 0..FOUR_BPP_BUF_SIZE {
@@ -374,12 +354,20 @@ fn main() -> ! {
         for _cycle in 0..4 {
             eink_display.start_frame();
             for _line in 0..HEIGHT {
+                let raw_data: [u8; WIDTH/4] = [0b01010101; WIDTH/4];//black
+                eink_display.write_row(&raw_data);
+            }
+            eink_display.end_frame();
+        }
+        for _cycle in 0..4 {
+            eink_display.start_frame();
+            for _line in 0..HEIGHT {
                 let raw_data: [u8; WIDTH/4] = [0b10101010; WIDTH/4];//white
                 eink_display.write_row(&raw_data);
             }
             eink_display.end_frame();
         }
-        for grayscale in 0..11 {
+        for grayscale in 5..9 {
             let mut pos: usize = 0;
             eink_display.start_frame();
             for _line in 0..HEIGHT {
@@ -406,6 +394,14 @@ fn main() -> ! {
         for _cycle in 0..4 {
             eink_display.start_frame();
             for _line in 0..HEIGHT {
+                let raw_data: [u8; WIDTH/4] = [0b01010101; WIDTH/4];//black
+                eink_display.write_row(&raw_data);
+            }
+            eink_display.end_frame();
+        }
+        for _cycle in 0..4 {
+            eink_display.start_frame();
+            for _line in 0..HEIGHT {
                 let raw_data: [u8; WIDTH/4] = [0b10101010; WIDTH/4];//white
                 eink_display.write_row(&raw_data);
             }
@@ -413,7 +409,7 @@ fn main() -> ! {
         }
         //delay.delay(1.secs());
         led.set_high();
-        for grayscale in 0..11 {
+        for grayscale in 5..9 {
             let mut pos: usize = 0;
             eink_display.start_frame();
             for _line in 0..HEIGHT {
