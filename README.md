@@ -1,4 +1,9 @@
-#SdCard (embedded-sdmmc-rs)
+# PSRAM
+PSRAM failed initialize when espflash ver 1.7.0.
+but espflash latest 3.0.1 fails connect to esp32s2 onother reason...
+espflash@2.0.1 works success connect and works psram correct.
+
+# SdCard (embedded-sdmmc-rs)
 supports MBR FAT32 and **need [W95 FAT32] type(0x0c)**
 
 can use convert-to-eink-image.sh to convert image
