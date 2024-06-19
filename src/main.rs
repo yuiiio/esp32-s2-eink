@@ -299,7 +299,7 @@ fn main() -> ! {
 
     let spi = Spi::new(
         peripherals.SPI2,
-        400u32.kHz(),
+        25u32.MHz(),
         SpiMode::Mode0,
         &clocks,
     ).with_pins(Some(sclk), Some(mosi), Some(miso), NO_PIN);
