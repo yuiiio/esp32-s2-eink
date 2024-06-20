@@ -183,7 +183,7 @@ impl EinkDisplay
 
     #[inline(always)]
     fn write_4bpp_image<U: core::alloc::Allocator>(&mut self, img_buf: &Vec<u8, U>) {
-        for grayscale in 5..9 {
+        for grayscale in [0, 3, 6, 9] {
             let mut pos: usize = 0;
             self.start_frame();
             for _line in 0..HEIGHT {
