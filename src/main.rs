@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 #![feature(allocator_api)]
+#![feature(asm_experimental_arch)]
 
 
 extern crate alloc;
@@ -11,6 +12,7 @@ use esp_alloc;
 
 use core::ptr::addr_of_mut;
 use core::fmt::Write;
+use core::arch::asm;
 
 use esp_backtrace as _;
 use esp_hal::{
@@ -96,7 +98,7 @@ struct EinkDisplay {
     pub d6: AnyOutput<'static>,
     pub d7: AnyOutput<'static>,
 
-    pub delay: Delay,
+    //pub delay: Delay,
 }
 
 impl EinkDisplay
@@ -107,7 +109,18 @@ impl EinkDisplay
         self.mode1.set_high();
         self.spv.set_low();
         self.ckv.set_low();
-        self.delay.delay(1.micros());
+        //self.delay.delay(1.micros());
+        unsafe {
+            asm!("nop");
+            asm!("nop");
+            asm!("nop");
+            asm!("nop");
+
+            asm!("nop");
+            asm!("nop");
+            asm!("nop");
+            asm!("nop");
+        }
         self.ckv.set_high();
         self.spv.set_high();
     }
@@ -180,7 +193,18 @@ impl EinkDisplay
         self.xle.set_low();
 
         self.ckv.set_low();
-        self.delay.delay(1.micros());
+        //self.delay.delay(1.micros());
+        unsafe {
+            asm!("nop");
+            asm!("nop");
+            asm!("nop");
+            asm!("nop");
+
+            asm!("nop");
+            asm!("nop");
+            asm!("nop");
+            asm!("nop");
+        }
         self.ckv.set_high();
     }
 
@@ -382,7 +406,7 @@ fn main() -> ! {
     let d6 = AnyOutput::new(io.pins.gpio10, Level::High);
     let d7 = AnyOutput::new(io.pins.gpio13, Level::High);
 
-    let mut eink_display = EinkDisplay { mode1, ckv, spv, xcl, xle, xoe, xstl, d0, d1, d2, d3, d4, d5, d6, d7, delay };
+    let mut eink_display = EinkDisplay { mode1, ckv, spv, xcl, xle, xoe, xstl, d0, d1, d2, d3, d4, d5, d6, d7 };//, delay };
 
     eink_display.write_all_white();
     eink_display.write_all_black();
