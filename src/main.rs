@@ -203,6 +203,28 @@ impl EinkDisplay
             self.end_frame();
         }
     }
+    #[inline(always)]
+    fn write_4bpp_reverse_image<U: core::alloc::Allocator>(&mut self, img_buf: &Vec<u8, U>) {
+        for grayscale in 6..8 {
+            let mut pos: usize = 0;
+            self.start_frame();
+            for _line in 0..HEIGHT {
+                let mut buf: [u8; WIDTH/4] = [0u8; WIDTH/4];
+                for i in 0..(WIDTH/4) {
+                    let mut b: u8 = 0b10101010; // white
+                    if (img_buf[pos] >> 4) > grayscale { b ^= 0b11000000 };//reverse => black 
+                    if (img_buf[pos] & 0x0f) > grayscale { b ^= 0b00110000 };
+                    pos += 1;
+                    if (img_buf[pos] >> 4) > grayscale { b ^= 0b00001100 };
+                    if (img_buf[pos] & 0x0f) > grayscale { b ^= 0b00000011 };
+                    pos += 1;
+                    buf[i] = b;
+                }
+                self.write_row(&buf);
+            }
+            self.end_frame();
+        }
+    }
 
     #[inline(always)]
     fn write_all_black(&mut self) {
@@ -391,17 +413,25 @@ fn main() -> ! {
 
     let mut eink_display = EinkDisplay { mode1, ckv, spv, xcl, xle, xoe, xstl, d0, d1, d2, d3, d4, d5, d6, d7, delay };
 
+    eink_display.write_all_white();
+    eink_display.write_all_black();
+    led.set_low();
     loop {
-        led.set_low();
         open_4bpp_image(&mut volume_manager, &mut img_buf, "02.tif");
-        eink_display.write_all_black();
+        //eink_display.write_all_black();
+        //reverse image can effective clear than all black flush ?
+        eink_display.write_4bpp_reverse_image(&img_buf);
         eink_display.write_4bpp_image(&img_buf);
-        //delay.delay(1.secs());
-
         led.set_high();
+        delay.delay(2.secs());
+        led.set_low();
+
         open_4bpp_image(&mut volume_manager, &mut img_buf, "01.tif");
-        eink_display.write_all_black();
+        //eink_display.write_all_black();
+        eink_display.write_4bpp_reverse_image(&img_buf);
         eink_display.write_4bpp_image(&img_buf);
-        //delay.delay(1.secs());
+        led.set_high();
+        delay.delay(2.secs());
+        led.set_low();
     }
 }
