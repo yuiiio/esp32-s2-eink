@@ -203,6 +203,29 @@ impl EinkDisplay
             self.end_frame();
         }
     }
+
+    #[inline(always)]
+    fn write_all_black(&mut self) {
+        for _cycle in 0..4 {
+            self.start_frame();
+            for _line in 0..HEIGHT {
+                let raw_data: [u8; WIDTH/4] = [0b01010101; WIDTH/4];//black
+                self.write_row(&raw_data);
+            }
+            self.end_frame();
+        }
+    }
+    #[inline(always)]
+    fn write_all_white(&mut self) {
+        for _cycle in 0..4 {
+            self.start_frame();
+            for _line in 0..HEIGHT {
+                let raw_data: [u8; WIDTH/4] = [0b10101010; WIDTH/4];//white
+                self.write_row(&raw_data);
+            }
+            self.end_frame();
+        }
+    }
 }
 
 fn open_4bpp_image<D: embedded_sdmmc::BlockDevice, T: embedded_sdmmc::TimeSource, U: core::alloc::Allocator>(volume_manager: &mut VolumeManager<D, T>, img_buf: &mut Vec<u8, U>, file_name: &str) {
@@ -370,54 +393,14 @@ fn main() -> ! {
 
     loop {
         led.set_low();
-        for i in 0..FOUR_BPP_BUF_SIZE {
-            img_buf[i] = 0u8;
-        }
         open_4bpp_image(&mut volume_manager, &mut img_buf, "02.tif");
-        for _cycle in 0..4 {
-            eink_display.start_frame();
-            for _line in 0..HEIGHT {
-                let raw_data: [u8; WIDTH/4] = [0b01010101; WIDTH/4];//black
-                eink_display.write_row(&raw_data);
-            }
-            eink_display.end_frame();
-        }
-        /*
-        for _cycle in 0..4 {
-            eink_display.start_frame();
-            for _line in 0..HEIGHT {
-                let raw_data: [u8; WIDTH/4] = [0b10101010; WIDTH/4];//white
-                eink_display.write_row(&raw_data);
-            }
-            eink_display.end_frame();
-        }
-        */
+        eink_display.write_all_black();
         eink_display.write_4bpp_image(&img_buf);
+        //delay.delay(1.secs());
 
         led.set_high();
-        for i in 0..FOUR_BPP_BUF_SIZE {
-            img_buf[i] = 0u8;
-        }
         open_4bpp_image(&mut volume_manager, &mut img_buf, "01.tif");
-        for _cycle in 0..4 {
-            eink_display.start_frame();
-            for _line in 0..HEIGHT {
-                let raw_data: [u8; WIDTH/4] = [0b01010101; WIDTH/4];//black
-                eink_display.write_row(&raw_data);
-            }
-            eink_display.end_frame();
-        }
-        /*
-        for _cycle in 0..4 {
-            eink_display.start_frame();
-            for _line in 0..HEIGHT {
-                let raw_data: [u8; WIDTH/4] = [0b10101010; WIDTH/4];//white
-                eink_display.write_row(&raw_data);
-            }
-            eink_display.end_frame();
-        }
-        */
-        //delay.delay(1.secs());
+        eink_display.write_all_black();
         eink_display.write_4bpp_image(&img_buf);
         //delay.delay(1.secs());
     }
