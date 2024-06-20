@@ -5,6 +5,7 @@
 
 extern crate alloc;
 use alloc::vec::Vec;
+use alloc::string::String;
 
 use esp_alloc;
 
@@ -28,8 +29,11 @@ use usb_device::prelude::{UsbDeviceBuilder, UsbVidPid};
 use usbd_serial::{SerialPort, USB_CLASS_CDC};
 
 use embedded_sdmmc::{
+    Error,
+    BlockDevice,
     Mode, VolumeIdx,
     sdcard::{SdCard, DummyCsPin},
+    SdCardError,
     VolumeManager,
 };
 use embedded_hal_bus::spi::ExclusiveDevice;
@@ -52,7 +56,6 @@ impl<B: usb_device::class_prelude::UsbBus> core::fmt::Write for SerialWrapper<'_
         Ok(())
     }
 }
-
 struct FakeTimesource {}
 
 impl embedded_sdmmc::TimeSource for FakeTimesource {
@@ -250,48 +253,16 @@ impl EinkDisplay
     }
 }
 
-fn open_4bpp_image<D: embedded_sdmmc::BlockDevice, T: embedded_sdmmc::TimeSource, U: core::alloc::Allocator>(volume_manager: &mut VolumeManager<D, T>, img_buf: &mut Vec<u8, U>, file_name: &str) {
-    match volume_manager.open_volume(VolumeIdx(0)) {
-        Ok(mut volume0) => {  
-            let mut root_dir = volume0.open_root_dir().unwrap();
-            /*
-            let mut example_file = root_dir.open_file_in_dir("MY_FILE.TXT", Mode::ReadOnly).unwrap();
-            let mut txt1 = [0u8; 2];
-            example_file.read(&mut txt1).unwrap();
-            let mut txt2 = [0u8; 3];
-            example_file.read(&mut txt2).unwrap();
-            loop {
-                if usb_dev.poll(&mut [&mut serial.0]) {
-                    break;
-                }
-            }
-            writeln!(serial, "MY_FILE.TXT: txt1: {:?}\n", txt1).unwrap();
-            writeln!(serial, "MY_FILE.TXT: txt2: {:?}\n", txt2).unwrap();
-            */
-            let mut file = root_dir.open_file_in_dir(file_name, Mode::ReadOnly).unwrap();
-            let mut tiff_header = [0u8; 8];
-            file.read(&mut tiff_header).unwrap();// first 8 bytes is annotation header
-            /*
-            loop {
-                if usb_dev.poll(&mut [&mut serial.0]) {
-                    break;
-                }
-            }
-            writeln!(serial, "output.tif header: {:?}\n", tiff_header).unwrap();
-            */
-            file.read(img_buf).unwrap();
-        },
-        Err(error) => {
-            /*
-            loop {
-                if usb_dev.poll(&mut [&mut serial.0]) {
-                    break;
-                }
-            }
-            writeln!(serial, "open_volume Err {:?}\n", error).unwrap();
-            */
-        },
-    };
+fn open_4bpp_image<D: embedded_sdmmc::BlockDevice, T: embedded_sdmmc::TimeSource, U: core::alloc::Allocator>(volume_manager: &mut VolumeManager<D, T>, img_buf: &mut Vec<u8, U>, file_name: &str) -> Result<(), Error<SdCardError>> where embedded_sdmmc::Error<SdCardError>: From<embedded_sdmmc::Error<<D as BlockDevice>::Error>> {
+    let mut volume0 = volume_manager.open_volume(VolumeIdx(0))?;
+    let mut root_dir = volume0.open_root_dir()?;
+    let mut file = root_dir.open_file_in_dir(file_name, Mode::ReadOnly)?;
+
+    let mut tiff_header = [0u8; 8];
+    file.read(&mut tiff_header)?;// first 8 bytes is annotation header
+    
+    file.read(img_buf)?;
+    Ok(())
 }
 
 #[entry]
@@ -416,22 +387,23 @@ fn main() -> ! {
     eink_display.write_all_white();
     eink_display.write_all_black();
     led.set_low();
+    let mut file_name = String::with_capacity(7);
     loop {
-        open_4bpp_image(&mut volume_manager, &mut img_buf, "02.tif");
-        //eink_display.write_all_black();
-        //reverse image can effective clear than all black flush ?
-        eink_display.write_4bpp_reverse_image(&img_buf);
-        eink_display.write_4bpp_image(&img_buf);
-        led.set_high();
-        delay.delay(2.secs());
-        led.set_low();
-
-        open_4bpp_image(&mut volume_manager, &mut img_buf, "01.tif");
-        //eink_display.write_all_black();
-        eink_display.write_4bpp_reverse_image(&img_buf);
-        eink_display.write_4bpp_image(&img_buf);
-        led.set_high();
-        delay.delay(2.secs());
-        led.set_low();
+        for i in 0..99 {
+            file_name.clear();
+            write!(&mut file_name, "{0: >02}.tif", i).unwrap();
+            match open_4bpp_image(&mut volume_manager, &mut img_buf, &file_name) {
+                Ok(_) => {
+                    eink_display.write_4bpp_reverse_image(&img_buf);
+                    eink_display.write_4bpp_image(&img_buf);
+                    led.set_high();
+                    delay.delay(2.secs());
+                    led.set_low();
+                },
+                Err(_error) => {
+                    /* maybe not found file or failed mount */
+                },
+            };
+        }
     }
 }
