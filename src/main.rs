@@ -180,6 +180,29 @@ impl EinkDisplay
         self.delay.delay(1.micros());
         self.ckv.set_high();
     }
+
+    #[inline(always)]
+    fn write_4bpp_image<U: core::alloc::Allocator>(&mut self, img_buf: &Vec<u8, U>) {
+        for grayscale in 5..9 {
+            let mut pos: usize = 0;
+            self.start_frame();
+            for _line in 0..HEIGHT {
+                let mut buf: [u8; WIDTH/4] = [0u8; WIDTH/4];
+                for i in 0..(WIDTH/4) {
+                    let mut b: u8 = 0b10101010; // white
+                    if (img_buf[pos] >> 4) <= grayscale { b ^= 0b11000000 };//reverse => black 
+                    if (img_buf[pos] & 0x0f) <= grayscale { b ^= 0b00110000 };
+                    pos += 1;
+                    if (img_buf[pos] >> 4) <= grayscale { b ^= 0b00001100 };
+                    if (img_buf[pos] & 0x0f) <= grayscale { b ^= 0b00000011 };
+                    pos += 1;
+                    buf[i] = b;
+                }
+                self.write_row(&buf);
+            }
+            self.end_frame();
+        }
+    }
 }
 
 fn open_4bpp_image<D: embedded_sdmmc::BlockDevice, T: embedded_sdmmc::TimeSource, U: core::alloc::Allocator>(volume_manager: &mut VolumeManager<D, T>, img_buf: &mut Vec<u8, U>, file_name: &str) {
@@ -359,6 +382,7 @@ fn main() -> ! {
             }
             eink_display.end_frame();
         }
+        /*
         for _cycle in 0..4 {
             eink_display.start_frame();
             for _line in 0..HEIGHT {
@@ -367,26 +391,10 @@ fn main() -> ! {
             }
             eink_display.end_frame();
         }
-        for grayscale in 5..9 {
-            let mut pos: usize = 0;
-            eink_display.start_frame();
-            for _line in 0..HEIGHT {
-                let mut buf: [u8; WIDTH/4] = [0b10101010; WIDTH/4];
-                for i in 0..(WIDTH/4) {
-                    let mut b: u8 = 0;
-                    if (img_buf[pos] >> 4) <= grayscale { b |= 0x40 };
-                    if (img_buf[pos] & 0x0f) <= grayscale { b |= 0x10 };
-                    pos += 1;
-                    if (img_buf[pos] >> 4) <= grayscale { b |= 0x04 };
-                    if (img_buf[pos] & 0x0f) <= grayscale { b |= 0x01 };
-                    pos += 1;
-                    buf[i] = b;
-                }
-                eink_display.write_row(&buf);
-            }
-            eink_display.end_frame();
-        }
+        */
+        eink_display.write_4bpp_image(&img_buf);
 
+        led.set_high();
         for i in 0..FOUR_BPP_BUF_SIZE {
             img_buf[i] = 0u8;
         }
@@ -399,6 +407,7 @@ fn main() -> ! {
             }
             eink_display.end_frame();
         }
+        /*
         for _cycle in 0..4 {
             eink_display.start_frame();
             for _line in 0..HEIGHT {
@@ -407,27 +416,9 @@ fn main() -> ! {
             }
             eink_display.end_frame();
         }
+        */
         //delay.delay(1.secs());
-        led.set_high();
-        for grayscale in 5..9 {
-            let mut pos: usize = 0;
-            eink_display.start_frame();
-            for _line in 0..HEIGHT {
-                let mut buf: [u8; WIDTH/4] = [0b10101010; WIDTH/4];
-                for i in 0..(WIDTH/4) {
-                    let mut b: u8 = 0;
-                    if (img_buf[pos] >> 4) <= grayscale { b |= 0x40 };
-                    if (img_buf[pos] & 0x0f) <= grayscale { b |= 0x10 };
-                    pos += 1;
-                    if (img_buf[pos] >> 4) <= grayscale { b |= 0x04 };
-                    if (img_buf[pos] & 0x0f) <= grayscale { b |= 0x01 };
-                    pos += 1;
-                    buf[i] = b;
-                }
-                eink_display.write_row(&buf);
-            }
-            eink_display.end_frame();
-        }
+        eink_display.write_4bpp_image(&img_buf);
         //delay.delay(1.secs());
     }
 }
