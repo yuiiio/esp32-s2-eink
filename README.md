@@ -1,3 +1,13 @@
+# Xtensa using esp patched llvm 
+
+wr_mask_gpio_out, set_bit_gpio_out, clr_bit_gpio_out, get_gpio_in 
+
+like esp32s2 specific instructions supports
+
+xtensa-esp32-elf-objdump install palace is like
+
+~/.rustup/toolchains/esp/xtensa-esp-elf/esp-13.2.0_20230928/xtensa-esp-elf/bin/xtensa-esp32-elf-objdump
+
 # PSRAM
 PSRAM fails to init when using espflash ver 1.7.0 :(
 
