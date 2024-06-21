@@ -389,11 +389,14 @@ fn main() -> ! {
     }
  
     // GPIO_ENABLE_REG(0~31)
+    let mut enable_pins: u32 = 0x00000000;
     for i in 0..8 {
-        unsafe { &*GPIO::PTR }.enable_w1ts().write(|w| unsafe {
-            w.bits(1 << (eink_data_bus_ios[i] % 32))
-        });
+        enable_pins |= 1 << (eink_data_bus_ios[i] % 32);
     }
+
+    unsafe { &*GPIO::PTR }.enable_w1ts().write(|w| unsafe {
+        w.bits(enable_pins)
+    });
     
     // IO_MUX_MCU_SEL
     // hm RegisterBlock in esp32s2 pac doesnot impl gpio(num)
