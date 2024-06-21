@@ -21,7 +21,7 @@ use esp_hal::{
     delay::Delay,
     gpio::{Io, Level, Output, AnyOutput, NO_PIN},
     otg_fs::{Usb, UsbBus},
-    peripherals::Peripherals,
+    peripherals::{Peripherals, GPIO, IO_MUX},
     prelude::*,
     system::SystemControl,
     spi::{SpiMode, master::Spi},
@@ -89,16 +89,6 @@ struct EinkDisplay {
     pub xoe: AnyOutput<'static>,
     pub xstl: AnyOutput<'static>,
 
-    pub d0: AnyOutput<'static>,
-    pub d1: AnyOutput<'static>,
-    pub d2: AnyOutput<'static>,
-    pub d3: AnyOutput<'static>,
-    pub d4: AnyOutput<'static>,
-    pub d5: AnyOutput<'static>,
-    pub d6: AnyOutput<'static>,
-    pub d7: AnyOutput<'static>,
-
-    //pub delay: Delay,
 }
 
 impl EinkDisplay
@@ -109,7 +99,6 @@ impl EinkDisplay
         self.mode1.set_high();
         self.spv.set_low();
         self.ckv.set_low();
-        //self.delay.delay(1.micros());
         unsafe {
             asm!("nop");
             asm!("nop");
@@ -142,46 +131,10 @@ impl EinkDisplay
         /* can write 4 pixel for onece */
         for pos in 0..(WIDTH/4) {
             let four_pixels = row_data[pos];
-            if four_pixels & 0b00000001 == 0b00000001 {
-                self.d0.set_high();
-            } else {
-                self.d0.set_low();
-            }
-            if four_pixels & 0b00000010 == 0b00000010 {
-                self.d1.set_high();
-            } else {
-                self.d1.set_low();
-            }
-            if four_pixels & 0b00000100 == 0b00000100 {
-                self.d2.set_high();
-            } else {
-                self.d2.set_low();
-            }
-            if four_pixels & 0b00001000 ==  0b0001000 {
-                self.d3.set_high();
-            } else {
-                self.d3.set_low();
-            }
-            if four_pixels & 0b00010000 == 0b00010000 {
-                self.d4.set_high();
-            } else {
-                self.d4.set_low();
-            }
-            if four_pixels & 0b00100000 == 0b00100000 {
-                self.d5.set_high();
-            } else {
-                self.d5.set_low();
-            }
-            if four_pixels & 0b01000000 == 0b01000000 {
-                self.d6.set_high();
-            } else {
-                self.d6.set_low();
-            }
-            if four_pixels & 0b10000000 == 0b10000000 {
-                self.d7.set_high();
-            } else {
-                self.d7.set_low();
-            }
+            // write 8bit
+            unsafe { 
+                asm!("wr_mask_gpio_out {0}, {1}", in(reg) four_pixels, in(reg) 0xff);
+            };
             self.xcl.set_high();
             self.xcl.set_low();
         }
@@ -193,7 +146,6 @@ impl EinkDisplay
         self.xle.set_low();
 
         self.ckv.set_low();
-        //self.delay.delay(1.micros());
         unsafe {
             asm!("nop");
             asm!("nop");
@@ -456,6 +408,44 @@ fn main() -> ! {
     }
     // too big for dram? so use psram(2M)
     
+    // # esp32s2 technical reference page 171
+    // pro_alonegpio_out0: (235)
+    // ..
+    // pro_alonegpio_out7: (242)
+    // GPIO_FUNCx_OUT_SEL_CFG
+    let eink_data_bus_ios: [usize; 8] = [18, 21, 16, 17, 7, 9, 10, 13];  
+    for i in 0..8 {
+        unsafe { &*GPIO::PTR }.func_out_sel_cfg(eink_data_bus_ios[i]).modify(|_, w| unsafe {
+            w.out_sel()
+                .bits(235 + (i as u16))
+                .inv_sel()
+                .bit(false)
+                .oen_sel()
+                .bit(false)
+                .oen_inv_sel()
+                .bit(false)
+        });
+    }
+ 
+    // GPIO_ENABLE_REG(0~31)
+    for i in 0..8 {
+        unsafe { &*GPIO::PTR }.enable_w1ts().write(|w| unsafe {
+            w.bits(1 << (i % 32))
+        });
+    }
+    
+    // IO_MUX_MCU_SEL
+    // hm RegisterBlock in esp32s2 pac doesnot impl gpio(num)
+    unsafe { &*IO_MUX::PTR}.gpio18().modify(|_, w| unsafe { w.mcu_sel().bits(1) }); // set to Function 1
+    unsafe { &*IO_MUX::PTR}.gpio21().modify(|_, w| unsafe { w.mcu_sel().bits(1) });
+    unsafe { &*IO_MUX::PTR}.gpio16().modify(|_, w| unsafe { w.mcu_sel().bits(1) });
+    unsafe { &*IO_MUX::PTR}.gpio17().modify(|_, w| unsafe { w.mcu_sel().bits(1) });
+    unsafe { &*IO_MUX::PTR}.gpio7().modify(|_, w| unsafe { w.mcu_sel().bits(1) });
+    unsafe { &*IO_MUX::PTR}.gpio9().modify(|_, w| unsafe { w.mcu_sel().bits(1) });
+    unsafe { &*IO_MUX::PTR}.gpio10().modify(|_, w| unsafe { w.mcu_sel().bits(1) });
+    unsafe { &*IO_MUX::PTR}.gpio13().modify(|_, w| unsafe { w.mcu_sel().bits(1) });
+
+
     let mode1 = AnyOutput::new(io.pins.gpio11, Level::High);
     let ckv = AnyOutput::new(io.pins.gpio14, Level::High);
     let spv = AnyOutput::new(io.pins.gpio12, Level::High);
@@ -465,16 +455,7 @@ fn main() -> ! {
     let xoe = AnyOutput::new(io.pins.gpio38, Level::High);
     let xstl = AnyOutput::new(io.pins.gpio33, Level::High);
 
-    let d0 = AnyOutput::new(io.pins.gpio18, Level::High);
-    let d1 = AnyOutput::new(io.pins.gpio21, Level::High);
-    let d2 = AnyOutput::new(io.pins.gpio16, Level::High);
-    let d3 = AnyOutput::new(io.pins.gpio17, Level::High);
-    let d4 = AnyOutput::new(io.pins.gpio7, Level::High);
-    let d5 = AnyOutput::new(io.pins.gpio9, Level::High);
-    let d6 = AnyOutput::new(io.pins.gpio10, Level::High);
-    let d7 = AnyOutput::new(io.pins.gpio13, Level::High);
-
-    let mut eink_display = EinkDisplay { mode1, ckv, spv, xcl, xle, xoe, xstl, d0, d1, d2, d3, d4, d5, d6, d7 };//, delay };
+    let mut eink_display = EinkDisplay { mode1, ckv, spv, xcl, xle, xoe, xstl };
 
     eink_display.write_all_white();
     eink_display.write_all_black();
