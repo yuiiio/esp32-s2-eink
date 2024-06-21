@@ -21,12 +21,13 @@ use esp_hal::{
     delay::Delay,
     gpio::{Io, Level, Output, AnyOutput, NO_PIN},
     otg_fs::{Usb, UsbBus},
-    peripherals::{Peripherals, GPIO, IO_MUX},
+    peripherals::{Peripherals, GPIO, IO_MUX, DEDICATED_GPIO},
     prelude::*,
     system::SystemControl,
     spi::{SpiMode, master::Spi},
     psram,
 };
+
 use usb_device::prelude::{UsbDeviceBuilder, UsbVidPid};
 use usbd_serial::{SerialPort, USB_CLASS_CDC};
 
@@ -72,6 +73,17 @@ impl embedded_sdmmc::TimeSource for FakeTimesource {
         }
     }
 }
+
+/*
+const DR_REG_DEDICATED_GPIO_BASE: usize = 0x3f4cf000;
+const DEDICATED_GPIO_OUT_CPU_EN_REG: usize = DR_REG_DEDICATED_GPIO_BASE + 0x10;
+
+const DR_REG_SYSTEM_BASE: usize = 0x3f4c0000;
+const DPORT_CPU_PERI_CLK_EN_REG: usize = DR_REG_SYSTEM_BASE + 0x10;
+const DPORT_CPU_PERI_RST_EN_REG: usize = DR_REG_SYSTEM_BASE + 0x014;
+const DPORT_CLK_EN_DEDICATED_GPIO: usize = 1 << 7;
+const DPORT_RST_EN_DEDICATED_GPIO: usize = 1 << 7;
+*/
 
 /* eink display */
 const HEIGHT: usize = 1072;
@@ -247,6 +259,14 @@ fn main() -> ! {
     psram::init_psram(peripherals.PSRAM);
     init_psram_heap();
 
+    /* enable dedicated gpio peripheral */
+    peripherals.SYSTEM.cpu_peri_clk_en().modify(|_, w| {
+        w.clk_en_dedicated_gpio().bit(true)
+    });
+    peripherals.SYSTEM.cpu_peri_rst_en().modify(|_, w| {
+        w.rst_en_dedicated_gpio().bit(true)
+    });
+
     let system = SystemControl::new(peripherals.SYSTEM);
 
     let clocks = ClockControl::max(system.clock_control).freeze();
@@ -340,6 +360,15 @@ fn main() -> ! {
     }
     // too big for dram? so use psram(2M)
     
+
+    
+    /* get the values of dedicated GPIO from the CPU, not peripheral registers */
+    for i in 0..8{
+        unsafe { &*DEDICATED_GPIO::PTR }.out_cpu().modify(|_, w| {
+            w.sel(i).bit(true)
+        });
+    }
+
     // # esp32s2 technical reference page 171
     // pro_alonegpio_out0: (235)
     // ..
@@ -362,7 +391,7 @@ fn main() -> ! {
     // GPIO_ENABLE_REG(0~31)
     for i in 0..8 {
         unsafe { &*GPIO::PTR }.enable_w1ts().write(|w| unsafe {
-            w.bits(1 << (i % 32))
+            w.bits(1 << (eink_data_bus_ios[i] % 32))
         });
     }
     
@@ -376,7 +405,6 @@ fn main() -> ! {
     unsafe { &*IO_MUX::PTR}.gpio9().modify(|_, w| unsafe { w.mcu_sel().bits(1) });
     unsafe { &*IO_MUX::PTR}.gpio10().modify(|_, w| unsafe { w.mcu_sel().bits(1) });
     unsafe { &*IO_MUX::PTR}.gpio13().modify(|_, w| unsafe { w.mcu_sel().bits(1) });
-
 
     let mode1 = AnyOutput::new(io.pins.gpio11, Level::High);
     let ckv = AnyOutput::new(io.pins.gpio14, Level::High);
