@@ -382,11 +382,15 @@ fn main() -> ! {
 
     let mut volume_manager = VolumeManager::new(sdcard, FakeTimesource{});
 
-    let mut img_buf: Vec<u8, _> = Vec::with_capacity_in(FOUR_BPP_BUF_SIZE, &PSRAM_ALLOCATOR);
+    let mut img_buf1: Vec<u8, _> = Vec::with_capacity_in(FOUR_BPP_BUF_SIZE, &PSRAM_ALLOCATOR);
     for _i in 0..FOUR_BPP_BUF_SIZE {
-        img_buf.push(0u8);
+        img_buf1.push(0u8);
     }
     // too big for dram? so use psram(2M)
+    let mut img_buf2: Vec<u8, _> = Vec::with_capacity_in(FOUR_BPP_BUF_SIZE, &PSRAM_ALLOCATOR);
+    for _i in 0..FOUR_BPP_BUF_SIZE {
+        img_buf2.push(0u8);
+    }
     
     let mode1 = AnyOutput::new(io.pins.gpio11, Level::High);
     let ckv = AnyOutput::new(io.pins.gpio14, Level::High);
@@ -412,14 +416,16 @@ fn main() -> ! {
     eink_display.write_all_black();
     led.set_low();
     let mut file_name = String::with_capacity(7);
+    let mut pre_buf = &mut img_buf1;
+    let mut next_buf = &mut img_buf2;
     loop {
         for i in 0..99 {
             file_name.clear();
             write!(&mut file_name, "{0: >02}.tif", i).unwrap();
-            match open_4bpp_image(&mut volume_manager, &mut img_buf, &file_name) {
+            match open_4bpp_image(&mut volume_manager, &mut next_buf, &file_name) {
                 Ok(_) => {
-                    eink_display.write_4bpp_reverse_image(&img_buf);
-                    eink_display.write_4bpp_image(&img_buf);
+                    eink_display.write_4bpp_reverse_image(&pre_buf);
+                    eink_display.write_4bpp_image(&next_buf);
                     led.set_high();
                     delay.delay(2.secs());
                     led.set_low();
@@ -428,6 +434,7 @@ fn main() -> ! {
                     /* maybe not found file or failed mount */
                 },
             };
+            core::mem::swap(pre_buf, next_buf);
         }
     }
 }
