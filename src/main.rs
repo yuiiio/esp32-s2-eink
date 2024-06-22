@@ -38,6 +38,7 @@ use embedded_sdmmc::{
     sdcard::{SdCard, DummyCsPin},
     SdCardError,
     VolumeManager,
+    Directory,
 };
 use embedded_hal_bus::spi::ExclusiveDevice;
 
@@ -301,9 +302,9 @@ impl EinkDisplay
     }
 }
 
-fn open_4bpp_image<D: embedded_sdmmc::BlockDevice, T: embedded_sdmmc::TimeSource, U: core::alloc::Allocator>(volume_manager: &mut VolumeManager<D, T>, img_buf: &mut Vec<u8, U>, file_name: &str) -> Result<(), Error<SdCardError>> where embedded_sdmmc::Error<SdCardError>: From<embedded_sdmmc::Error<<D as BlockDevice>::Error>> {
-    let mut volume0 = volume_manager.open_volume(VolumeIdx(0))?;
-    let mut root_dir = volume0.open_root_dir()?;
+fn open_4bpp_image<D: embedded_sdmmc::BlockDevice, T: embedded_sdmmc::TimeSource, const MAX_DIRS: usize, const MAX_FILES: usize, const MAX_VOLUMES: usize, U: core::alloc::Allocator>
+(root_dir: &mut Directory<D, T, MAX_DIRS, MAX_FILES, MAX_VOLUMES>, img_buf: &mut Vec<u8, U>, file_name: &str) -> Result<(), Error<SdCardError>>
+where embedded_sdmmc::Error<SdCardError>: From<embedded_sdmmc::Error<<D as BlockDevice>::Error>> {
     let mut file = root_dir.open_file_in_dir(file_name, Mode::ReadOnly)?;
 
     let mut tiff_header = [0u8; 8];
@@ -482,16 +483,25 @@ fn main() -> ! {
     let xstl = AnyOutput::new(io.pins.gpio33, Level::High);
 
     let mut eink_display = EinkDisplay { mode1, ckv, spv, xcl, xle, xoe, xstl };
-
     eink_display.write_all_white();
     eink_display.write_all_black();
     led.set_low();
+
+    const last_num_record_file: &str = "LASTNUM";
+    let mut volume0 = volume_manager.open_volume(VolumeIdx(0)).expect("failed to open volume");
+    let mut root_dir = volume0.open_root_dir().expect("failed to open volume");
+    { // scope start for opened_file and &mut root_dir
+        let mut opened_file = root_dir.open_file_in_dir(last_num_record_file, Mode::ReadWriteCreateOrTruncate).expect("failed to open or create last_opened_file_num");
+        let mut last_num = [0u8; 4];
+        opened_file.read(&mut last_num).unwrap();
+    } // drop opened_file and &mut root_dir, so can reuse
+
     let mut file_name = String::with_capacity(7);
     loop {
         for i in 0..99 {
             file_name.clear();
             write!(&mut file_name, "{0: >02}.tif", i).unwrap();
-            match open_4bpp_image(&mut volume_manager, &mut img_buf, &file_name) {
+            match open_4bpp_image(&mut root_dir, &mut img_buf, &file_name) {
                 Ok(_) => {
                     //eink_display.write_4bpp_reverse_image(&img_buf);
                     eink_display.write_all_black();
@@ -501,7 +511,7 @@ fn main() -> ! {
                     led.set_low();
                 },
                 Err(_error) => {
-                    /* maybe not found file or failed mount */
+                    /* not found file */
                 },
             };
         }
