@@ -220,44 +220,10 @@ impl EinkDisplay
     #[inline(always)]
     fn write_all_black(&mut self) {
         for _cycle in 0..4 {
-            // black
-            self.d0.set_high();
-            self.d1.set_low();
-            self.d2.set_high();
-            self.d3.set_low();
-            self.d4.set_high();
-            self.d5.set_low();
-            self.d6.set_high();
-            self.d7.set_low();
             self.start_frame();
             for _line in 0..HEIGHT {
-                self.xstl.set_low();
-                /* can write 4 pixel for onece */
-                for _pos in 0..(WIDTH/4) {
-                    self.xcl.set_high();
-                    self.xcl.set_low();
-                }
-                self.xstl.set_high();
-                self.xcl.set_high();
-                self.xcl.set_low();
-
-                self.xle.set_high();
-                self.xle.set_low();
-
-                self.ckv.set_low();
-                //self.delay.delay(1.micros());
-                unsafe {
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-                }
-                self.ckv.set_high();
+                let raw_data: [u8; WIDTH/4] = [0b01010101; WIDTH/4];//black
+                self.write_row(&raw_data);
             }
             self.end_frame();
         }
@@ -265,44 +231,10 @@ impl EinkDisplay
     #[inline(always)]
     fn write_all_white(&mut self) {
         for _cycle in 0..4 {
-            // white
-            self.d0.set_low();
-            self.d1.set_high();
-            self.d2.set_low();
-            self.d3.set_high();
-            self.d4.set_low();
-            self.d5.set_high();
-            self.d6.set_low();
-            self.d7.set_high();
             self.start_frame();
             for _line in 0..HEIGHT {
-                self.xstl.set_low();
-                /* can write 4 pixel for onece */
-                for _pos in 0..(WIDTH/4) {
-                    self.xcl.set_high();
-                    self.xcl.set_low();
-                }
-                self.xstl.set_high();
-                self.xcl.set_high();
-                self.xcl.set_low();
-
-                self.xle.set_high();
-                self.xle.set_low();
-
-                self.ckv.set_low();
-                //self.delay.delay(1.micros());
-                unsafe {
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-                }
-                self.ckv.set_high();
+                let raw_data: [u8; WIDTH/4] = [0b10101010; WIDTH/4];//white
+                self.write_row(&raw_data);
             }
             self.end_frame();
         }
@@ -498,8 +430,7 @@ fn main() -> ! {
             write!(&mut file_name, "{0: >02}.tif", i).unwrap();
             match open_4bpp_image(&mut volume_manager, &mut img_buf, &file_name) {
                 Ok(_) => {
-                    //eink_display.write_4bpp_reverse_image(&img_buf);
-                    eink_display.write_all_black();
+                    eink_display.write_4bpp_reverse_image(&img_buf);
                     eink_display.write_4bpp_image(&img_buf);
                     led.set_high();
                     delay.delay(2.secs());
