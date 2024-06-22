@@ -145,7 +145,7 @@ impl EinkDisplay
             let four_pixels = row_data[pos];
             // write 8bit
             unsafe { 
-                asm!("wr_mask_gpio_out {0}, {1}", in(reg) four_pixels, in(reg) 0xff);
+                asm!("wur.gpio_out {0}", in(reg) four_pixels);
             };
             self.xcl.set_high();
             self.xcl.set_low();
@@ -223,7 +223,7 @@ impl EinkDisplay
             // black
             let four_pixels: u8 = 0b01010101;
             unsafe {
-            asm!("wr_mask_gpio_out {0}, {1}", in(reg) four_pixels, in(reg) 0xff);
+                asm!("wur.gpio_out {0}", in(reg) four_pixels);
             }
             self.start_frame();
             for _line in 0..HEIGHT {
@@ -264,7 +264,7 @@ impl EinkDisplay
             // white
             let four_pixels: u8 = 0b10101010;
             unsafe {
-            asm!("wr_mask_gpio_out {0}, {1}", in(reg) four_pixels, in(reg) 0xff);
+                asm!("wur.gpio_out {0}", in(reg) four_pixels);
             }
             self.start_frame();
             for _line in 0..HEIGHT {
