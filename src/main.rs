@@ -351,7 +351,6 @@ fn main() -> ! {
         .build();
     
     /* debug */
-    /*
     'outer: loop {
         if !usb_dev.poll(&mut [&mut serial.0]) {
             continue;
@@ -388,7 +387,6 @@ fn main() -> ! {
     }
 
     writeln!(serial, "\nSuccess serialWrapper test\n").unwrap();
-    */
 
     /* sd card */
     let sclk = io.pins.gpio36;
@@ -487,21 +485,26 @@ fn main() -> ! {
     eink_display.write_all_black();
     led.set_low();
 
+    // need shorter name, avoid TOOLONG file_name error
     const last_num_record_file: &str = "LASTNUM";
+    let mut last_num = [0u8; 4];
     let mut volume0 = volume_manager.open_volume(VolumeIdx(0)).expect("failed to open volume");
     let mut root_dir = volume0.open_root_dir().expect("failed to open volume");
     { // scope start for opened_file and &mut root_dir
-        let mut opened_file = root_dir.open_file_in_dir(last_num_record_file, Mode::ReadWriteCreateOrTruncate).expect("failed to open or create last_opened_file_num");
-        let mut last_num = [0u8; 4];
+        let mut opened_file = root_dir.open_file_in_dir(last_num_record_file, Mode::ReadWriteCreateOrTruncate).expect("failed to open or create last_num_record_file");
         opened_file.read(&mut last_num).unwrap();
     } // drop opened_file and &mut root_dir, so can reuse
 
-    let mut file_name = String::with_capacity(7);
+    let last_opend_num: u32 = u32::from_be_bytes(last_num);
+
+    let mut image_file_name = String::with_capacity(7);
+
+    let mut open_file_num = last_opend_num;
     loop {
-        for i in 0..99 {
-            file_name.clear();
-            write!(&mut file_name, "{0: >02}.tif", i).unwrap();
-            match open_4bpp_image(&mut root_dir, &mut img_buf, &file_name) {
+        'inner: loop {
+            image_file_name.clear();
+            write!(&mut image_file_name, "{0: >02}.tif", open_file_num).unwrap();
+            match open_4bpp_image(&mut root_dir, &mut img_buf, &image_file_name) {
                 Ok(_) => {
                     //eink_display.write_4bpp_reverse_image(&img_buf);
                     eink_display.write_all_black();
@@ -514,6 +517,33 @@ fn main() -> ! {
                     /* not found file */
                 },
             };
+
+            open_file_num += 1;
+            if open_file_num > 99 {
+                open_file_num = 0;
+                break 'inner;
+            }
+            { // scope start for opened_file and &mut root_dir
+                let mut opened_file = root_dir.open_file_in_dir(last_num_record_file, Mode::ReadWriteTruncate).expect("failed to open last_num_record_file");
+                opened_file.write(&open_file_num.to_be_bytes()).unwrap();
+                loop {
+                    if usb_dev.poll(&mut [&mut serial.0]) {
+                        break;
+                    }
+                }
+                writeln!(serial, "writed open_file_num: {:?}\n", open_file_num.to_be_bytes() ).unwrap();
+            } // drop opened_file and &mut root_dir, so can reuse
+            {
+                let mut opened_file = root_dir.open_file_in_dir(last_num_record_file, Mode::ReadOnly).expect("failed to open or create last_num_record_file");
+                let mut read_result = [0u8; 4];
+                opened_file.read(&mut read_result).unwrap();
+                loop {
+                    if usb_dev.poll(&mut [&mut serial.0]) {
+                        break;
+                    }
+                }
+                writeln!(serial, "read open_file_num: {:?}\n", read_result ).unwrap();
+            }
         }
     }
 }
