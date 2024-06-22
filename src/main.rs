@@ -326,6 +326,9 @@ fn main() -> ! {
     peripherals.SYSTEM.cpu_peri_rst_en().modify(|_, w| {
         w.rst_en_dedicated_gpio().bit(true)
     });
+    peripherals.SYSTEM.cpu_peri_rst_en().modify(|_, w| {
+        w.rst_en_dedicated_gpio().bit(false)
+    });
 
     let system = SystemControl::new(peripherals.SYSTEM);
 
