@@ -288,7 +288,6 @@ dependencies = [
 [[package]]
 name = "esp-build"
 version = "0.1.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#2d90fa30217c4e4930c3c674a0766cb54d609a98"
 dependencies = [
  "quote",
  "syn 2.0.66",
@@ -298,7 +297,6 @@ dependencies = [
 [[package]]
 name = "esp-hal"
 version = "0.18.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#2d90fa30217c4e4930c3c674a0766cb54d609a98"
 dependencies = [
  "basic-toml",
  "bitfield",
@@ -334,7 +332,6 @@ dependencies = [
 [[package]]
 name = "esp-hal-procmacros"
 version = "0.11.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#2d90fa30217c4e4930c3c674a0766cb54d609a98"
 dependencies = [
  "darling",
  "document-features",
@@ -350,7 +347,6 @@ dependencies = [
 [[package]]
 name = "esp-metadata"
 version = "0.1.1"
-source = "git+https://github.com/esp-rs/esp-hal.git#2d90fa30217c4e4930c3c674a0766cb54d609a98"
 dependencies = [
  "basic-toml",
  "lazy_static",
@@ -371,7 +367,6 @@ dependencies = [
 [[package]]
 name = "esp-riscv-rt"
 version = "0.8.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#2d90fa30217c4e4930c3c674a0766cb54d609a98"
 dependencies = [
  "document-features",
  "riscv",
