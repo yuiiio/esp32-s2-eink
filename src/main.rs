@@ -21,7 +21,8 @@ use esp_hal::{
     delay::Delay,
     gpio::{Io, Level, Output, AnyOutput, NO_PIN},
     otg_fs::{Usb, UsbBus},
-    peripherals::{Peripherals, GPIO, IO_MUX, DEDICATED_GPIO},
+    peripherals::{Peripherals, GPIO, IO_MUX, DEDICATED_GPIO, RTC_IO, LPWR},
+    rtc_cntl::Rtc,
     prelude::*,
     system::SystemControl,
     spi::{SpiMode, master::Spi},
@@ -313,6 +314,76 @@ where embedded_sdmmc::Error<SdCardError>: From<embedded_sdmmc::Error<<D as Block
     file.read(img_buf)?;
     Ok(())
 }
+    
+/* register from esp-idf/components/hal/esp32s2/include/hal/touch_sensor_ll.h */
+const TOUCH_LL_READ_RAW: u8 = 0x0;
+const TOUCH_LL_READ_BENCHMARK: u8 = 0x2;
+const TOUCH_LL_READ_SMOOTH: u8 = 0x3;
+const TOUCH_LL_TIMER_FORCE_DONE: u8 = 0x3;
+const TOUCH_LL_TIMER_DONE: u8 = 0x0;
+/* hal/include/hal/touch_sensor_types.h */
+
+const TOUCH_PAD_INTR_MASK_DONE: u32 = 1 << 0;
+const TOUCH_PAD_INTR_MASK_ACTIVE: u32 = 1 << 1;
+const TOUCH_PAD_INTR_MASK_INACTIVE: u32 = 1 << 2;
+const TOUCH_PAD_INTR_MASK_SCAN_DONE: u32 = 1 << 3;
+const TOUCH_PAD_INTR_MASK_TIMEOUT: u32 = 1 << 4;
+
+const TOUCH_PAD_INTR_MASK_ALL: u32 = 
+TOUCH_PAD_INTR_MASK_DONE 
+| TOUCH_PAD_INTR_MASK_ACTIVE 
+| TOUCH_PAD_INTR_MASK_TIMEOUT 
+| TOUCH_PAD_INTR_MASK_INACTIVE 
+| TOUCH_PAD_INTR_MASK_SCAN_DONE;
+
+fn touch_ll_stop_fsm(rtc_cntl: &LPWR) {
+    rtc_cntl.touch_ctrl2().modify(|_, w| {
+        w.touch_start_en().bit(false) //stop touch fsm
+        .touch_slp_timer_en().bit(false)
+    });
+    rtc_cntl.touch_ctrl2().modify(|_, w| unsafe {
+        w.touch_timer_force_done().bits(TOUCH_LL_TIMER_FORCE_DONE)
+        .touch_timer_force_done().bits(TOUCH_LL_TIMER_DONE)
+    });
+}
+
+fn touch_ll_intr_disable(rtc_cntl: &LPWR, mask: &u32) {
+    if mask & TOUCH_PAD_INTR_MASK_DONE == TOUCH_PAD_INTR_MASK_DONE {
+        rtc_cntl.int_ena().modify(|_, w| { w.touch_done().bit(false) });
+    }
+    if mask & TOUCH_PAD_INTR_MASK_ACTIVE == TOUCH_PAD_INTR_MASK_ACTIVE {
+        rtc_cntl.int_ena().modify(|_, w| { w.touch_active().bit(false) });
+    }
+    if mask & TOUCH_PAD_INTR_MASK_INACTIVE == TOUCH_PAD_INTR_MASK_INACTIVE {
+        rtc_cntl.int_ena().modify(|_, w| { w.touch_inactive().bit(false) });
+    }
+    if mask & TOUCH_PAD_INTR_MASK_SCAN_DONE == TOUCH_PAD_INTR_MASK_SCAN_DONE {
+        rtc_cntl.int_ena().modify(|_, w| { w.touch_scan_done().bit(false) });
+    }
+    if mask & TOUCH_PAD_INTR_MASK_TIMEOUT == TOUCH_PAD_INTR_MASK_TIMEOUT {
+        rtc_cntl.int_ena().modify(|_, w| { w.touch_timeout().bit(false) });
+    }
+}
+fn touch_ll_intr_clear(rtc_cntl: &LPWR, mask: &u32) {
+    if mask & TOUCH_PAD_INTR_MASK_DONE == TOUCH_PAD_INTR_MASK_DONE {
+        rtc_cntl.int_clr().write(|w| { w.touch_done().bit(true) });
+    }
+    if mask & TOUCH_PAD_INTR_MASK_ACTIVE == TOUCH_PAD_INTR_MASK_ACTIVE {
+        rtc_cntl.int_clr().write(|w| { w.touch_active().bit(true) });
+    }
+    if mask & TOUCH_PAD_INTR_MASK_INACTIVE == TOUCH_PAD_INTR_MASK_INACTIVE {
+        rtc_cntl.int_clr().write(|w| { w.touch_inactive().bit(true) });
+    }
+    if mask & TOUCH_PAD_INTR_MASK_SCAN_DONE == TOUCH_PAD_INTR_MASK_SCAN_DONE {
+        rtc_cntl.int_clr().write(|w| { w.touch_scan_done().bit(true) });
+    }
+    if mask & TOUCH_PAD_INTR_MASK_TIMEOUT == TOUCH_PAD_INTR_MASK_TIMEOUT {
+        rtc_cntl.int_clr().write(|w| { w.touch_timeout().bit(true) });
+    }
+}
+
+fn touch_ll_clear_channel_mask(rtc_cntl: &LPWR) {
+}
 
 #[entry]
 fn main() -> ! {
@@ -338,6 +409,18 @@ fn main() -> ! {
 
     let io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
     let mut led = AnyOutput::new(io.pins.gpio15, Level::High);
+
+    /* touch_pad */
+    //  touch_pad_init(void)
+    //      touch_hal_init(void)
+    //          touch_ll_stop_fsm(void)
+    touch_ll_stop_fsm(&peripherals.LPWR);
+    //          touch_ll_intr_disable(TOUCH_PAD_INTR_MASK_ALL);
+    touch_ll_intr_disable(&peripherals.LPWR, &TOUCH_PAD_INTR_MASK_ALL);
+    //          touch_ll_intr_clear(TOUCH_PAD_INTR_MASK_ALL);
+    touch_ll_intr_clear(&peripherals.LPWR, &TOUCH_PAD_INTR_MASK_ALL);
+    //          touch_ll_clear_channel_mask(TOUCH_PAD_BIT_MASK_ALL);
+    
 
     /*usb serial debug*/
     let usb = Usb::new(peripherals.USB0, io.pins.gpio19, io.pins.gpio20);
