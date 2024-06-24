@@ -21,7 +21,7 @@ use esp_hal::{
     delay::Delay,
     gpio::{Io, Level, Output, AnyOutput, NO_PIN},
     otg_fs::{Usb, UsbBus},
-    peripherals::{Peripherals, GPIO, IO_MUX, DEDICATED_GPIO, RTC_IO, LPWR, SENS},
+    peripherals::{Peripherals, GPIO, IO_MUX, DEDICATED_GPIO, RTC_IO, LPWR},
     rtc_cntl::Rtc,
     prelude::*,
     system::SystemControl,
@@ -336,9 +336,6 @@ TOUCH_PAD_INTR_MASK_DONE
 | TOUCH_PAD_INTR_MASK_INACTIVE 
 | TOUCH_PAD_INTR_MASK_SCAN_DONE;
 
-const SOC_TOUCH_SENSOR_NUM: u16 = 15; // esp32s2
-const TOUCH_PAD_BIT_MASK_ALL: u16 = (1<<SOC_TOUCH_SENSOR_NUM) -1;
-
 fn touch_ll_stop_fsm(rtc_cntl: &LPWR) {
     rtc_cntl.touch_ctrl2().modify(|_, w| {
         w.touch_start_en().bit(false) //stop touch fsm
@@ -385,13 +382,7 @@ fn touch_ll_intr_clear(rtc_cntl: &LPWR, mask: &u32) {
     }
 }
 
-fn touch_ll_clear_channel_mask(sens: &SENS, rtc_cntl: &LPWR, disable_mask: &u16) {
-    sens.sar_touch_conf().modify(|r, w| unsafe {
-        w.touch_outen().bits(r.bits() as u16 & !(disable_mask & TOUCH_PAD_BIT_MASK_ALL))
-    });
-    rtc_cntl.touch_scan_ctrl().modify(|r, w| unsafe {
-        w.touch_scan_pad_map().bits(r.bits() as u16 & !(disable_mask & TOUCH_PAD_BIT_MASK_ALL))
-    });
+fn touch_ll_clear_channel_mask(rtc_cntl: &LPWR) {
 }
 
 #[entry]
@@ -422,10 +413,13 @@ fn main() -> ! {
     /* touch_pad */
     //  touch_pad_init(void)
     //      touch_hal_init(void)
+    //          touch_ll_stop_fsm(void)
     touch_ll_stop_fsm(&peripherals.LPWR);
+    //          touch_ll_intr_disable(TOUCH_PAD_INTR_MASK_ALL);
     touch_ll_intr_disable(&peripherals.LPWR, &TOUCH_PAD_INTR_MASK_ALL);
+    //          touch_ll_intr_clear(TOUCH_PAD_INTR_MASK_ALL);
     touch_ll_intr_clear(&peripherals.LPWR, &TOUCH_PAD_INTR_MASK_ALL);
-    touch_ll_clear_channel_mask(&peripherals.SENS, &peripherals.LPWR, &TOUCH_PAD_BIT_MASK_ALL);
+    //          touch_ll_clear_channel_mask(TOUCH_PAD_BIT_MASK_ALL);
     
 
     /*usb serial debug*/
