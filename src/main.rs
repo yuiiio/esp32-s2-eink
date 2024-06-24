@@ -491,23 +491,81 @@ fn main() -> ! {
     let mut root_dir = volume0.open_root_dir().expect("failed to open volume");
 
     let mut file_name = String::with_capacity(7);
+    let mut i = 0;
+
+    /*self cpu impl touch pad*/
+    let mut touch_out = AnyOutput::new(io.pins.gpio1, Level::Low);
+
+    let mut adc1_config = AdcConfig::new();
+    let mut touch_left = adc1_config.enable_pin(io.pins.gpio2, Attenuation::Attenuation11dB);
+    let mut touch_right = adc1_config.enable_pin(io.pins.gpio3, Attenuation::Attenuation11dB);
+    let mut touch_center = adc1_config.enable_pin(io.pins.gpio4, Attenuation::Attenuation11dB);
+    let mut touch_top = adc1_config.enable_pin(io.pins.gpio5, Attenuation::Attenuation11dB);
+    let mut adc1 = Adc::new(peripherals.ADC1, adc1_config);
+
+    let mut f = 0;
     loop {
-        for i in 0..99 {
-            file_name.clear();
-            write!(&mut file_name, "{0: >02}.tif", i).unwrap();
-            match open_4bpp_image(&mut root_dir, &mut img_buf, &file_name) {
-                Ok(_) => {
-                    //eink_display.write_4bpp_reverse_image(&img_buf);
-                    eink_display.write_all_black();
-                    eink_display.write_4bpp_image(&img_buf);
-                    led.set_high();
-                    delay.delay(2.secs());
-                    led.set_low();
-                },
-                Err(_error) => {
-                    /* not found file */
-                },
-            };
+        'inner: loop {
+            touch_out.set_high();
+            delay.delay(20.micros());
+            touch_out.set_low();
+            delay.delay(10.micros());
+            let left_pin_value = adc1.read_blocking(&mut touch_left);
+            touch_out.set_high();
+            delay.delay(20.micros());
+            touch_out.set_low();
+            delay.delay(10.micros());
+            let right_pin_value = adc1.read_blocking(&mut touch_right);
+            /*
+            if !usb_dev.poll(&mut [&mut serial.0]) {
+                continue;
+            }
+            f = f+1;
+            if f > 40000 {
+            write!(serial, "left: {}, right: {}\n", left_pin_value, right_pin_value).unwrap();
+            f = 0;
+            }
+            */
+
+            if left_pin_value > 5300 {
+                if i == 0 {
+                    //i = 99;
+                } else {
+                    i = i - 1;
+                }
+                break 'inner;
+            }
+            if right_pin_value > 5300 {
+                if i == 99 {
+                    i = 0;
+                } else {
+                    i = i + 1;
+                }
+                break 'inner;
+            }
         }
+        file_name.clear();
+        write!(&mut file_name, "{0: >02}.tif", i).unwrap();
+        match open_4bpp_image(&mut root_dir, &mut img_buf, &file_name) {
+            Ok(_) => {
+                //eink_display.write_4bpp_reverse_image(&img_buf);
+                eink_display.write_all_black();
+                eink_display.write_4bpp_image(&img_buf);
+                /*
+                led.set_high();
+                delay.delay(2.secs());
+                led.set_low();
+                */
+            },
+            Err(_error) => {
+                /* not found file */
+            },
+        };
+        /*
+        i = i + 1;
+        if i > 99 {
+            i = 0;
+        }
+        */
     }
 }
