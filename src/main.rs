@@ -31,6 +31,9 @@ use esp_hal::{
 use usb_device::prelude::{UsbDeviceBuilder, UsbVidPid};
 use usbd_serial::{SerialPort, USB_CLASS_CDC};
 
+use embedded_storage::{ReadStorage, Storage};
+use esp_storage::FlashStorage;
+
 use embedded_sdmmc::{
     Error,
     BlockDevice,
@@ -350,8 +353,8 @@ fn main() -> ! {
         .device_class(USB_CLASS_CDC)
         .build();
     
-    /* debug */
     /*
+    /* debug */
     'outer: loop {
         if !usb_dev.poll(&mut [&mut serial.0]) {
             continue;
@@ -389,6 +392,16 @@ fn main() -> ! {
 
     writeln!(serial, "\nSuccess serialWrapper test\n").unwrap();
     */
+    
+    /* flash rom */
+    let mut bytes = [0u8; 4];
+    let mut flash = FlashStorage::new();
+    let flash_addr = 0x9000;// default NVS size: 0x6000
+    //write!(serial, "Flash size = {}\n", flash.capacity()).unwrap();
+    flash.read(flash_addr, &mut bytes).unwrap();
+    //write!(serial, "read = {:02x?}\n", &bytes[..4]).unwrap();
+    
+    let last_opend_num: u32 = u32::from_be_bytes(bytes);
 
     /* sd card */
     let sclk = io.pins.gpio36;
@@ -490,8 +503,13 @@ fn main() -> ! {
     let mut volume0 = volume_manager.open_volume(VolumeIdx(0)).expect("failed to open volume");
     let mut root_dir = volume0.open_root_dir().expect("failed to open volume");
 
-    let mut file_name = String::with_capacity(7);
-    let mut i = 0;
+    let mut file_name = String::with_capacity(7); //xx.tif
+
+    let mut i: u32 = if last_opend_num > 99 {
+        0
+    } else {
+        last_opend_num
+    };
 
     /*self cpu impl touch pad*/
     let mut touch_out = AnyOutput::new(io.pins.gpio1, Level::Low);
@@ -566,21 +584,11 @@ fn main() -> ! {
                 //eink_display.write_4bpp_reverse_image(&img_buf);
                 eink_display.write_all_black();
                 eink_display.write_4bpp_image(&img_buf);
-                /*
-                led.set_high();
-                delay.delay(2.secs());
-                led.set_low();
-                */
+                flash.write(flash_addr, &i.to_be_bytes()).unwrap();
             },
             Err(_error) => {
                 /* not found file */
             },
         };
-        /*
-        i = i + 1;
-        if i > 99 {
-            i = 0;
-        }
-        */
     }
 }

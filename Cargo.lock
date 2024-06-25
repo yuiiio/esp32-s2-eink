@@ -229,6 +229,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "embedded-storage"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a21dea9854beb860f3062d10228ce9b976da520a73474aed3171ec276bc0c032"
+
+[[package]]
 name = "enum-as-inner"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -270,7 +276,7 @@ checksum = "5443807d6dff69373d433ab9ef5378ad8df50ca6298caf15de6e52e24aaf54d5"
 [[package]]
 name = "esp-alloc"
 version = "0.4.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#2d90fa30217c4e4930c3c674a0766cb54d609a98"
+source = "git+https://github.com/esp-rs/esp-hal.git#0b5eb1f00e9c3c8398a2e1cd6fdd451eb27551c2"
 dependencies = [
  "critical-section",
  "linked_list_allocator",
@@ -288,7 +294,7 @@ dependencies = [
 [[package]]
 name = "esp-build"
 version = "0.1.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#2d90fa30217c4e4930c3c674a0766cb54d609a98"
+source = "git+https://github.com/esp-rs/esp-hal.git#0b5eb1f00e9c3c8398a2e1cd6fdd451eb27551c2"
 dependencies = [
  "quote",
  "syn 2.0.66",
@@ -298,7 +304,7 @@ dependencies = [
 [[package]]
 name = "esp-hal"
 version = "0.18.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#2d90fa30217c4e4930c3c674a0766cb54d609a98"
+source = "git+https://github.com/esp-rs/esp-hal.git#0b5eb1f00e9c3c8398a2e1cd6fdd451eb27551c2"
 dependencies = [
  "basic-toml",
  "bitfield",
@@ -334,7 +340,7 @@ dependencies = [
 [[package]]
 name = "esp-hal-procmacros"
 version = "0.11.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#2d90fa30217c4e4930c3c674a0766cb54d609a98"
+source = "git+https://github.com/esp-rs/esp-hal.git#0b5eb1f00e9c3c8398a2e1cd6fdd451eb27551c2"
 dependencies = [
  "darling",
  "document-features",
@@ -350,7 +356,7 @@ dependencies = [
 [[package]]
 name = "esp-metadata"
 version = "0.1.1"
-source = "git+https://github.com/esp-rs/esp-hal.git#2d90fa30217c4e4930c3c674a0766cb54d609a98"
+source = "git+https://github.com/esp-rs/esp-hal.git#0b5eb1f00e9c3c8398a2e1cd6fdd451eb27551c2"
 dependencies = [
  "basic-toml",
  "lazy_static",
@@ -371,11 +377,21 @@ dependencies = [
 [[package]]
 name = "esp-riscv-rt"
 version = "0.8.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#2d90fa30217c4e4930c3c674a0766cb54d609a98"
+source = "git+https://github.com/esp-rs/esp-hal.git#0b5eb1f00e9c3c8398a2e1cd6fdd451eb27551c2"
 dependencies = [
  "document-features",
  "riscv",
  "riscv-rt-macros",
+]
+
+[[package]]
+name = "esp-storage"
+version = "0.3.0"
+source = "git+https://github.com/esp-rs/esp-hal.git#0b5eb1f00e9c3c8398a2e1cd6fdd451eb27551c2"
+dependencies = [
+ "critical-section",
+ "embedded-storage",
+ "esp-build",
 ]
 
 [[package]]
@@ -397,10 +413,12 @@ version = "0.1.0"
 dependencies = [
  "embedded-hal-bus",
  "embedded-sdmmc",
+ "embedded-storage",
  "esp-alloc",
  "esp-backtrace",
  "esp-hal",
  "esp-println",
+ "esp-storage",
  "heapless",
  "log",
  "usb-device",
