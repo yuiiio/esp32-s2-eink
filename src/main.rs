@@ -503,31 +503,46 @@ fn main() -> ! {
     let mut touch_top = adc1_config.enable_pin(io.pins.gpio5, Attenuation::Attenuation11dB);
     let mut adc1 = Adc::new(peripherals.ADC1, adc1_config);
 
+    /*
     let mut f = 0;
+    #[allow(unreachable_code)]
+    loop {
+        touch_out.set_high();
+        delay.delay(40.micros());
+        touch_out.set_low();
+        delay.delay(10.micros());
+        let left_pin_value = adc1.read_blocking(&mut touch_left);
+        touch_out.set_high();
+        delay.delay(40.micros());
+        touch_out.set_low();
+        delay.delay(10.micros());
+        let right_pin_value = adc1.read_blocking(&mut touch_right);
+        if !usb_dev.poll(&mut [&mut serial.0]) {
+            continue;
+        }
+        f = f+1;
+        if f > 4000 {
+            write!(serial, "left: {}, right: {}\n", left_pin_value, right_pin_value).unwrap();
+            f = 0;
+        }
+    }
+
+    #[allow(unreachable_code)]
+    */
     loop {
         'inner: loop {
             touch_out.set_high();
-            delay.delay(20.micros());
+            delay.delay(40.micros());
             touch_out.set_low();
             delay.delay(10.micros());
             let left_pin_value = adc1.read_blocking(&mut touch_left);
             touch_out.set_high();
-            delay.delay(20.micros());
+            delay.delay(40.micros());
             touch_out.set_low();
             delay.delay(10.micros());
             let right_pin_value = adc1.read_blocking(&mut touch_right);
-            /*
-            if !usb_dev.poll(&mut [&mut serial.0]) {
-                continue;
-            }
-            f = f+1;
-            if f > 40000 {
-            write!(serial, "left: {}, right: {}\n", left_pin_value, right_pin_value).unwrap();
-            f = 0;
-            }
-            */
 
-            if left_pin_value > 5300 {
+            if left_pin_value > 5150 {
                 if i == 0 {
                     //i = 99;
                 } else {
@@ -535,7 +550,7 @@ fn main() -> ! {
                 }
                 break 'inner;
             }
-            if right_pin_value > 5300 {
+            if right_pin_value > 5200 {
                 if i == 99 {
                     i = 0;
                 } else {
