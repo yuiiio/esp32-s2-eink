@@ -178,7 +178,7 @@ impl EinkDisplay
 
     #[inline(always)]
     fn write_4bpp_image<U: core::alloc::Allocator>(&mut self, img_buf: &Vec<u8, U>) {
-        for grayscale in [4, 8, 10] {
+        for grayscale in [4, 7, 10] {
             let mut pos: usize = 0;
             self.start_frame();
             for _line in 0..HEIGHT {
@@ -498,7 +498,6 @@ fn main() -> ! {
     let mut eink_display = EinkDisplay { mode1, ckv, spv, xcl, xle, xoe, xstl };
     eink_display.write_all_white();
     eink_display.write_all_black();
-    led.set_low();
 
     let mut volume0 = volume_manager.open_volume(VolumeIdx(0)).expect("failed to open volume");
     let mut root_dir = volume0.open_root_dir().expect("failed to open volume");
@@ -560,7 +559,7 @@ fn main() -> ! {
             delay.delay(10.micros());
             let right_pin_value = adc1.read_blocking(&mut touch_right);
 
-            if left_pin_value > 5150 {
+            if left_pin_value > 5110 {
                 if i == 0 {
                     //i = 99;
                 } else {
@@ -568,7 +567,7 @@ fn main() -> ! {
                 }
                 break 'inner;
             }
-            if right_pin_value > 5200 {
+            if right_pin_value > 5190 {
                 if i == 99 {
                     i = 0;
                 } else {
