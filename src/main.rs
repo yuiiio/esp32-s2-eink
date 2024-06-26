@@ -411,7 +411,7 @@ fn main() -> ! {
 
     let spi = Spi::new(
         peripherals.SPI2,
-        25u32.MHz(),
+        50u32.MHz(),
         SpiMode::Mode0,
         &clocks,
     ).with_pins(Some(sclk), Some(mosi), Some(miso), NO_PIN);
@@ -546,6 +546,7 @@ fn main() -> ! {
 
     #[allow(unreachable_code)]
     */
+    led.set_low();
     loop {
         'inner: loop {
             touch_out.set_high();
