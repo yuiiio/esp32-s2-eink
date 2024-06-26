@@ -23,6 +23,7 @@ usbd-serial = "0.2.2"
 heapless = "0.8.0"
 embedded-storage = "0.3.1"
 esp-storage = { git = "https://github.com/esp-rs/esp-hal.git", features = ["esp32s2"] }
+usbd-storage = { version = "1.0.0", features = ["bbb", "scsi"] }
 [profile.dev]
 # Rust debug is too slow. 
 # For debug builds always builds with some optimization

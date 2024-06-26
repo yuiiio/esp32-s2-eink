@@ -423,6 +423,7 @@ dependencies = [
  "log",
  "usb-device",
  "usbd-serial",
+ "usbd-storage",
 ]
 
 [[package]]
@@ -584,6 +585,26 @@ name = "nb"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d5439c4ad607c3c23abf66de8c8bf57ba8adcd1f129e699851a6e43935d339d"
+
+[[package]]
+name = "num_enum"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a015b430d3c108a207fd776d2e2196aaf8b1cf8cf93253e3a097ff3085076a1"
+dependencies = [
+ "num_enum_derive",
+]
+
+[[package]]
+name = "num_enum_derive"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96667db765a921f7b295ffee8b60472b686a51d4f21c2ee4ffdb94c7013b65a6"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.66",
+]
 
 [[package]]
 name = "object"
@@ -909,6 +930,16 @@ dependencies = [
  "embedded-hal 0.2.7",
  "embedded-io",
  "nb 1.1.0",
+ "usb-device",
+]
+
+[[package]]
+name = "usbd-storage"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee23ab04c7d76b63c417cf2fa672d720477d2e71c6822ac6e5ceaf526f48f394"
+dependencies = [
+ "num_enum",
  "usb-device",
 ]
 
