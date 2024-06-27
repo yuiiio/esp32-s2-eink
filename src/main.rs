@@ -502,9 +502,9 @@ fn main() -> ! {
     let mut volume0 = volume_manager.open_volume(VolumeIdx(0)).expect("failed to open volume");
     let mut root_dir = volume0.open_root_dir().expect("failed to open volume");
 
-    let mut file_name = String::with_capacity(7); //xx.tif
+    let mut file_name = String::with_capacity(8); //xxx.tif
 
-    let mut i: u32 = if last_opend_num > 99 {
+    let mut i: u32 = if last_opend_num > 999 {
         0
     } else {
         last_opend_num
@@ -560,16 +560,16 @@ fn main() -> ! {
             delay.delay(10.micros());
             let right_pin_value = adc1.read_blocking(&mut touch_right);
 
-            if left_pin_value > 5110 {
+            if left_pin_value > 5150 {
                 if i == 0 {
-                    //i = 99;
+                    //i = 999;
                 } else {
                     i = i - 1;
                 }
                 break 'inner;
             }
-            if right_pin_value > 5190 {
-                if i == 99 {
+            if right_pin_value > 5220 {
+                if i == 999 {
                     i = 0;
                 } else {
                     i = i + 1;
@@ -578,7 +578,7 @@ fn main() -> ! {
             }
         }
         file_name.clear();
-        write!(&mut file_name, "{0: >02}.tif", i).unwrap();
+        write!(&mut file_name, "{0: >03}.tif", i).unwrap();
         match open_4bpp_image(&mut root_dir, &mut img_buf, &file_name) {
             Ok(_) => {
                 //eink_display.write_4bpp_reverse_image(&img_buf);
