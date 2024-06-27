@@ -522,7 +522,6 @@ fn main() -> ! {
 
     /*
     let mut f = 0;
-    #[allow(unreachable_code)]
     loop {
         touch_out.set_high();
         delay.delay(40.micros());
@@ -534,6 +533,7 @@ fn main() -> ! {
         touch_out.set_low();
         delay.delay(10.micros());
         let right_pin_value = adc1.read_blocking(&mut touch_right);
+        touch_out.set_high();
         if !usb_dev.poll(&mut [&mut serial.0]) {
             continue;
         }
@@ -543,9 +543,8 @@ fn main() -> ! {
             f = 0;
         }
     }
-
-    #[allow(unreachable_code)]
     */
+
     led.set_low();
     loop {
         'inner: loop {
@@ -559,8 +558,9 @@ fn main() -> ! {
             touch_out.set_low();
             delay.delay(10.micros());
             let right_pin_value = adc1.read_blocking(&mut touch_right);
+            touch_out.set_high();
 
-            if left_pin_value > 5150 {
+            if left_pin_value > 5110 {
                 if i == 0 {
                     //i = 999;
                 } else {
@@ -568,7 +568,7 @@ fn main() -> ! {
                 }
                 break 'inner;
             }
-            if right_pin_value > 5220 {
+            if right_pin_value > 5200 {
                 if i == 999 {
                     i = 0;
                 } else {
