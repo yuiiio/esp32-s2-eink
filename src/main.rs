@@ -545,73 +545,8 @@ fn main() -> ! {
     
     let usb = Usb::new(peripherals.USB0, io.pins.gpio19, io.pins.gpio20);
     let usb_bus = UsbBus::new(usb, unsafe { &mut *addr_of_mut!(EP_MEMORY) });
-    
-    /* flash rom */
-    let mut bytes = [0u8; 4];
-    let mut flash = FlashStorage::new();
-    let flash_addr = 0x9000;// default NVS size: 0x6000
-    //write!(serial, "Flash size = {}\n", flash.capacity()).unwrap();
-    flash.read(flash_addr, &mut bytes).unwrap();
-    //write!(serial, "read = {:02x?}\n", &bytes[..4]).unwrap();
-    
-    let last_opend_num: u32 = u32::from_be_bytes(bytes);
 
-    /* sd card */
-    let sclk = io.pins.gpio36;
-    let miso = io.pins.gpio37;
-    let mosi = io.pins.gpio35;
-    let cs = Output::new(io.pins.gpio34, Level::High);
-
-    let spi = Spi::new(
-        peripherals.SPI2,
-        50u32.MHz(),
-        SpiMode::Mode0,
-        &clocks,
-    ).with_pins(Some(sclk), Some(mosi), Some(miso), NO_PIN);
-
-    let spi_device = ExclusiveDevice::new_no_delay(spi, DummyCsPin).unwrap();
-
-    let sdcard = SdCard::new(spi_device, cs, delay);
-
-    let sdcard_bytes = sdcard.num_bytes().unwrap();
-
-    if true {
-        /* usb storage */
-        let BLOCKS: u32 = sdcard.num_blocks().unwrap().0;
-        let mut scsi =
-            usbd_storage::subclass::scsi::Scsi::new(&usb_bus, USB_PACKET_SIZE, MAX_LUN, unsafe {
-                USB_TRANSPORT_BUF.assume_init_mut().as_mut_slice()
-            })
-        .unwrap();
-
-        let mut usb_device = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0xabcd, 0xabcd))
-            .strings(&[StringDescriptors::new(usb_device::descriptor::lang_id::LangID::EN)
-                .manufacturer("Foo Bar")
-                .product("ESP32 USB Flash")
-                .serial_number("FOOBAR1234567890ABCDEF")])
-            .unwrap()
-            .self_powered(false)
-            .build();
-
-        loop {
-            if !usb_device.poll(&mut [&mut scsi]) {
-                continue;
-            }
-
-            // clear state if just configured or reset
-            if matches!(usb_device.state(), UsbDeviceState::Default) {
-                unsafe {
-                    STATE.reset();
-                };
-            }
-
-            let _ = scsi.poll(|command| {
-                if let Err(err) = process_command(command, BLOCKS, &sdcard) {
-                }
-            });
-        }
-    }
-
+    /*
     /*usb serial debug*/
     let serial = SerialPort::new(&usb_bus);
     let mut serial = SerialWrapper(serial);
@@ -657,8 +592,81 @@ fn main() -> ! {
     }
 
     writeln!(serial, "\nSuccess serialWrapper test\n").unwrap();
+    */
     
-    writeln!(serial, "Card size is {} bytes\n", sdcard_bytes).unwrap();
+    /* flash rom */
+    let mut bytes = [0u8; 4];
+    let mut flash = FlashStorage::new();
+    let flash_addr = 0x9000;// default NVS size: 0x6000
+    //write!(serial, "Flash size = {}\n", flash.capacity()).unwrap();
+    flash.read(flash_addr, &mut bytes).unwrap();
+    //write!(serial, "read = {:02x?}\n", &bytes[..4]).unwrap();
+    
+    let last_opend_num: u32 = u32::from_be_bytes(bytes);
+
+    /* sd card */
+    let sclk = io.pins.gpio36;
+    let miso = io.pins.gpio37;
+    let mosi = io.pins.gpio35;
+    let cs = Output::new(io.pins.gpio34, Level::High);
+
+    let spi = Spi::new(
+        peripherals.SPI2,
+        50u32.MHz(),
+        SpiMode::Mode0,
+        &clocks,
+    ).with_pins(Some(sclk), Some(mosi), Some(miso), NO_PIN);
+
+    let spi_device = ExclusiveDevice::new_no_delay(spi, DummyCsPin).unwrap();
+
+    let sdcard = SdCard::new(spi_device, cs, delay);
+
+    /*
+    loop {
+        if usb_dev.poll(&mut [&mut serial.0]) {
+            break;
+        }
+    }
+    writeln!(serial, "Card size is {} bytes\n", sdcard.num_bytes().unwrap()).unwrap();
+    */
+
+    let BLOCKS: u32 = sdcard.num_blocks().unwrap().0;
+
+    if true {
+        /* usb storage */
+        let mut scsi =
+            usbd_storage::subclass::scsi::Scsi::new(&usb_bus, USB_PACKET_SIZE, MAX_LUN, unsafe {
+                USB_TRANSPORT_BUF.assume_init_mut().as_mut_slice()
+            })
+        .unwrap();
+
+        let mut usb_device = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0xabcd, 0xabcd))
+            .strings(&[StringDescriptors::new(usb_device::descriptor::lang_id::LangID::EN)
+                .manufacturer("Foo Bar")
+                .product("ESP32 USB Flash")
+                .serial_number("FOOBAR1234567890ABCDEF")])
+            .unwrap()
+            .self_powered(false)
+            .build();
+
+        loop {
+            if !usb_device.poll(&mut [&mut scsi]) {
+                continue;
+            }
+
+            // clear state if just configured or reset
+            if matches!(usb_device.state(), UsbDeviceState::Default) {
+                unsafe {
+                    STATE.reset();
+                };
+            }
+
+            let _ = scsi.poll(|command| {
+                if let Err(err) = process_command(command, BLOCKS, &sdcard) {
+                }
+            });
+        }
+    }
 
     let mut volume_manager = VolumeManager::new(sdcard, FakeTimesource{});
 
@@ -730,31 +738,8 @@ fn main() -> ! {
     eink_display.write_all_white();
     eink_display.write_all_black();
 
-    let mut volume0 = match volume_manager.open_volume(VolumeIdx(0)) {
-        Ok(volume) => volume,
-        Err(error) => { 
-            loop {
-                if usb_dev.poll(&mut [&mut serial.0]) {
-                    break;
-                }
-            }
-            writeln!(serial, "failed to open volume: {:?}", error).unwrap();
-            loop {}
-        }
-    };
-    
-    let mut root_dir = match volume0.open_root_dir() {
-        Ok(root_dir) => root_dir,
-        Err(error) => { 
-            loop {
-                if usb_dev.poll(&mut [&mut serial.0]) {
-                    break;
-                }
-            }
-            writeln!(serial, "failed to open root_dir: {:?}", error).unwrap();
-            loop {}
-        }
-    };
+    let mut volume0 = volume_manager.open_volume(VolumeIdx(0)).expect("failed to open volume");
+    let mut root_dir = volume0.open_root_dir().expect("failed to open volume");
 
     let mut file_name = String::with_capacity(7); //xx.tif
 
