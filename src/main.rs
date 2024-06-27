@@ -87,7 +87,7 @@ impl embedded_sdmmc::TimeSource for FakeTimesource {
 
 static mut USB_TRANSPORT_BUF: MaybeUninit<[u8; 512]> = MaybeUninit::uninit();
 const BLOCK_SIZE: u32 = 512;
-const USB_PACKET_SIZE: u16 = 64; // 8,16,32,64
+const USB_PACKET_SIZE: u16 = 8; // 8,16,32,64
 const MAX_LUN: u8 = 0; // max 0x0F
 
 static mut STATE: State = State {
@@ -574,10 +574,10 @@ fn main() -> ! {
     let sdcard = SdCard::new(spi_device, cs, delay);
 
     let sdcard_bytes = sdcard.num_bytes().unwrap();
+    let BLOCKS: u32 = sdcard.num_blocks().unwrap().0;
 
     if true {
         /* usb storage */
-        let BLOCKS: u32 = sdcard.num_blocks().unwrap().0;
         let mut scsi =
             usbd_storage::subclass::scsi::Scsi::new(&usb_bus, USB_PACKET_SIZE, MAX_LUN, unsafe {
                 USB_TRANSPORT_BUF.assume_init_mut().as_mut_slice()
