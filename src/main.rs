@@ -552,15 +552,25 @@ fn main() -> ! {
             delay.delay(40.micros());
             touch_out.set_low();
             delay.delay(10.micros());
-            let left_pin_value = adc1.read_blocking(&mut touch_left);
+            let mut left_pin_value = adc1.read_blocking(&mut touch_left);
             touch_out.set_high();
             delay.delay(40.micros());
             touch_out.set_low();
             delay.delay(10.micros());
-            let right_pin_value = adc1.read_blocking(&mut touch_right);
+            let mut right_pin_value = adc1.read_blocking(&mut touch_right);
+            touch_out.set_high();
+            delay.delay(40.micros());
+            touch_out.set_low();
+            delay.delay(10.micros());
+            left_pin_value += adc1.read_blocking(&mut touch_left);
+            touch_out.set_high();
+            delay.delay(40.micros());
+            touch_out.set_low();
+            delay.delay(10.micros());
+            right_pin_value += adc1.read_blocking(&mut touch_right);
             touch_out.set_high();
 
-            if left_pin_value > 5110 {
+            if left_pin_value > 5090*2 {
                 if i == 0 {
                     //i = 999;
                 } else {
@@ -568,7 +578,7 @@ fn main() -> ! {
                 }
                 break 'inner;
             }
-            if right_pin_value > 5200 {
+            if right_pin_value > 5160*2 {
                 if i == 999 {
                     i = 0;
                 } else {
