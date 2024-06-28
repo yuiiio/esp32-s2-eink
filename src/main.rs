@@ -679,42 +679,44 @@ fn main() -> ! {
     }
     */
 
-    const TOUCH_LEFT_THRESHOLD: u16 = 5110;
-    const TOUCH_RIGHT_THRESHOLD: u16 = 5180;
+    const TOUCH_LEFT_THRESHOLD: u16 = 5100;
+    const TOUCH_RIGHT_THRESHOLD: u16 = 5160;
     const TOUCH_CENTER_THRESHOLD: u16 = 5140;
+    const TOUCH_PULSE_HIGH_DELAY: u32 = 40;
+    const TOUCH_PULSE_LOW_DELAY: u32 = 10;
 
     led.set_low();
     loop {
         'inner: loop {
             touch_out.set_high();
-            delay.delay(40.micros());
+            delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
             touch_out.set_low();
-            delay.delay(10.micros());
+            delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
             let mut left_pin_value = adc1.read_blocking(&mut touch_left);
             touch_out.set_high();
-            delay.delay(40.micros());
+            delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
             touch_out.set_low();
-            delay.delay(10.micros());
+            delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
             let mut right_pin_value = adc1.read_blocking(&mut touch_right);
             touch_out.set_high();
-            delay.delay(40.micros());
+            delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
             touch_out.set_low();
-            delay.delay(10.micros());
+            delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
             let mut center_pin_value = adc1.read_blocking(&mut touch_center);
             touch_out.set_high();
-            delay.delay(40.micros());
+            delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
             touch_out.set_low();
-            delay.delay(10.micros());
+            delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
             left_pin_value += adc1.read_blocking(&mut touch_left);
             touch_out.set_high();
-            delay.delay(40.micros());
+            delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
             touch_out.set_low();
-            delay.delay(10.micros());
+            delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
             right_pin_value += adc1.read_blocking(&mut touch_right);
             touch_out.set_high();
-            delay.delay(40.micros());
+            delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
             touch_out.set_low();
-            delay.delay(10.micros());
+            delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
             center_pin_value += adc1.read_blocking(&mut touch_center);
             touch_out.set_high();
 
@@ -744,34 +746,34 @@ fn main() -> ! {
 
                 'indicator: loop {
                     touch_out.set_high();
-                    delay.delay(40.micros());
+                    delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
                     touch_out.set_low();
-                    delay.delay(10.micros());
+                    delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
                     let mut left_pin_value = adc1.read_blocking(&mut touch_left);
                     touch_out.set_high();
-                    delay.delay(40.micros());
+                    delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
                     touch_out.set_low();
-                    delay.delay(10.micros());
+                    delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
                     let mut right_pin_value = adc1.read_blocking(&mut touch_right);
                     touch_out.set_high();
-                    delay.delay(40.micros());
+                    delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
                     touch_out.set_low();
-                    delay.delay(10.micros());
+                    delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
                     let mut center_pin_value = adc1.read_blocking(&mut touch_center);
                     touch_out.set_high();
-                    delay.delay(40.micros());
+                    delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
                     touch_out.set_low();
-                    delay.delay(10.micros());
+                    delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
                     left_pin_value += adc1.read_blocking(&mut touch_left);
                     touch_out.set_high();
-                    delay.delay(40.micros());
+                    delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
                     touch_out.set_low();
-                    delay.delay(10.micros());
+                    delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
                     right_pin_value += adc1.read_blocking(&mut touch_right);
                     touch_out.set_high();
-                    delay.delay(40.micros());
+                    delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
                     touch_out.set_low();
-                    delay.delay(10.micros());
+                    delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
                     center_pin_value += adc1.read_blocking(&mut touch_center);
                     touch_out.set_high();
 
