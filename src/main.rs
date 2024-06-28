@@ -305,12 +305,15 @@ impl EinkDisplay
     }
     #[inline(always)]
     fn write_bottom_indicator(&mut self, 
-        indicator_buf: &[bool; HEIGHT * BOTTOM_INDICATOR_WIDTH_DIV_4 * 4], 
-        pre_ind_buf: &[bool; HEIGHT * BOTTOM_INDICATOR_WIDTH_DIV_4 * 4]) { // partial update
+        first_commit: bool,
+        status_var: u32,
+        pre_status_var: u32) { // partial update
+        const BOTTOM_INDICATOR_WIDTH_DIV_4: usize = 40 / 4;
+        const SPLIT_WIDTH: usize = 4/4;
+        const BAR_WIDTH: u32= 20;
         for _cycle in 0..1 {
-            let mut pos = 0;
             self.start_frame();
-            for _line in 0..HEIGHT {
+            for line in 0..HEIGHT {
                 // none
                 let four_pixels: u8 = 0b00000000;
                 unsafe {
@@ -322,46 +325,92 @@ impl EinkDisplay
                     self.xcl.set_high();
                     self.xcl.set_low();
                 }
-                for _i in 0..BOTTOM_INDICATOR_WIDTH_DIV_4 {
-                    // none
-                    let mut four_pixels: u8 = 0b00000000;
-                    if indicator_buf[pos] != pre_ind_buf[pos] {
-                        if indicator_buf[pos] == true { 
-                            four_pixels |= 0b10000000 
-                        } else {
-                            four_pixels |= 0b01000000 
-                        }
-                    }
-                    pos = pos + 1;
-                    if indicator_buf[pos] != pre_ind_buf[pos] {
-                        if indicator_buf[pos] == true { 
-                            four_pixels |= 0b00100000 
-                        } else {
-                            four_pixels |= 0b00010000 
-                        }
-                    }
-                    pos = pos + 1;
-                    if indicator_buf[pos] != pre_ind_buf[pos] {
-                        if indicator_buf[pos] == true { 
-                            four_pixels |= 0b00001000 
-                        } else {
-                            four_pixels |= 0b00000100 
-                        }
-                    }
-                    pos = pos + 1;
-                    if indicator_buf[pos] != pre_ind_buf[pos] {
-                        if indicator_buf[pos] == true { 
-                            four_pixels |= 0b00000010 
-                        } else {
-                            four_pixels |= 0b00000001 
-                        }
-                    }
-                    pos = pos + 1;
+                if first_commit {
+                    //black
+                    let four_pixels: u8 = 0b01010101;
                     unsafe {
                         asm!("wur.gpio_out {0}", in(reg) four_pixels);
                     }
-                    self.xcl.set_high();
-                    self.xcl.set_low();
+                    for _i in 0..SPLIT_WIDTH { // draw split bar
+                        self.xcl.set_high();
+                        self.xcl.set_low();
+                    }
+                    if status_var.abs_diff(line as u32) <= BAR_WIDTH {
+                        //black button
+                        let four_pixels: u8 = 0b01010101;
+                        unsafe {
+                            asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                        }
+                        for _i in SPLIT_WIDTH..BOTTOM_INDICATOR_WIDTH_DIV_4 { // draw bar
+                            self.xcl.set_high();
+                            self.xcl.set_low();
+                        }
+                    } else {
+                        //white backgruond
+                        let four_pixels: u8 = 0b10101010;
+                        unsafe {
+                            asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                        }
+                        for _i in SPLIT_WIDTH..BOTTOM_INDICATOR_WIDTH_DIV_4 { // draw bar
+                            self.xcl.set_high();
+                            self.xcl.set_low();
+                        }
+                    }
+                } else {
+                    // none
+                    let four_pixels: u8 = 0b00000000;
+                    unsafe {
+                        asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                    }
+                    for _i in 0..SPLIT_WIDTH { // skip split bar
+                        self.xcl.set_high();
+                        self.xcl.set_low();
+                    }
+                    if status_var.abs_diff(line as u32) <= BAR_WIDTH {
+                        if pre_status_var.abs_diff(line as u32) > BAR_WIDTH {
+                            //black button
+                            let four_pixels: u8 = 0b01010101;
+                            unsafe {
+                                asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                            }
+                            for _i in SPLIT_WIDTH..BOTTOM_INDICATOR_WIDTH_DIV_4 { // draw bar
+                                self.xcl.set_high();
+                                self.xcl.set_low();
+                            }
+                        } else {
+                            //none
+                            let four_pixels: u8 = 0b00000000;
+                            unsafe {
+                                asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                            }
+                            for _i in SPLIT_WIDTH..BOTTOM_INDICATOR_WIDTH_DIV_4 { // draw bar
+                                self.xcl.set_high();
+                                self.xcl.set_low();
+                            }
+                        }
+                    } else {
+                        if pre_status_var.abs_diff(line as u32) <= BAR_WIDTH {
+                            //white background
+                            let four_pixels: u8 = 0b10101010;
+                            unsafe {
+                                asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                            }
+                            for _i in SPLIT_WIDTH..BOTTOM_INDICATOR_WIDTH_DIV_4 { // clear pre bar
+                                self.xcl.set_high();
+                                self.xcl.set_low();
+                            }
+                        } else {
+                            //none
+                            let four_pixels: u8 = 0b00000000;
+                            unsafe {
+                                asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                            }
+                            for _i in SPLIT_WIDTH..BOTTOM_INDICATOR_WIDTH_DIV_4 { // draw bar
+                                self.xcl.set_high();
+                                self.xcl.set_low();
+                            }
+                        }
+                    }
                 }
                 self.xstl.set_high();
                 self.xcl.set_high();
@@ -401,8 +450,6 @@ where embedded_sdmmc::Error<SdCardError>: From<embedded_sdmmc::Error<<D as Block
     file.read(img_buf)?;
     Ok(())
 }
-
-const BOTTOM_INDICATOR_WIDTH_DIV_4: usize = 20 / 4;
 
 #[entry]
 fn main() -> ! {
@@ -688,46 +735,11 @@ fn main() -> ! {
                 break 'inner;
             }
             if center_pin_value > TOUCH_CENTER_THRESHOLD*2 {
-                // no grayscale so /2 // true: white, false: black
-                let mut pre_ind_buf: [bool; HEIGHT * BOTTOM_INDICATOR_WIDTH_DIV_4 * 4] = [false; HEIGHT * BOTTOM_INDICATOR_WIDTH_DIV_4 * 4];
-                // double bufferd for damage track
-                let mut next_ind_buf: [bool; HEIGHT * BOTTOM_INDICATOR_WIDTH_DIV_4 * 4] = [true; HEIGHT * BOTTOM_INDICATOR_WIDTH_DIV_4 * 4];
-                // white clear in indicator area and write split line
-                const SPLIT_WIDTH: usize = 4;
-                let mut pos = 0;
-                for _line in 0..HEIGHT {
-                    for i in 0..SPLIT_WIDTH {
-                        pre_ind_buf[pos+i] = true; // for first damage
-                        next_ind_buf[pos+i] = false;
-                    }
-                    pos = pos + (BOTTOM_INDICATOR_WIDTH_DIV_4*4);
-                }
-                eink_display.write_bottom_indicator(&next_ind_buf, &pre_ind_buf);
-                let mut pos = 0;
-                for _line in 0..HEIGHT {
-                    for i in 0..SPLIT_WIDTH {
-                        pre_ind_buf[pos+i] = false; //reset for next_ind_buf
-                    }
-                    pos = pos + (BOTTOM_INDICATOR_WIDTH_DIV_4*4);
-                }
-                core::mem::swap(&mut pre_ind_buf, &mut next_ind_buf);
-
+                let mut pre_status_var: u32 = 0;
                 let indicator_pos_current: u32 = HEIGHT as u32 - ((cur_page * HEIGHT as u32) / 999);
-                let mut pos = 0;
-                for line in 0..HEIGHT {
-                    if indicator_pos_current.abs_diff(line as u32) <= 10 {
-                        for i in SPLIT_WIDTH..(BOTTOM_INDICATOR_WIDTH_DIV_4*4) {
-                            next_ind_buf[pos + i] = false; 
-                        }
-                    } else {
-                        for i in SPLIT_WIDTH..(BOTTOM_INDICATOR_WIDTH_DIV_4*4) {
-                            next_ind_buf[pos + i] = true; 
-                        }
-                    }
-                    pos = pos + (BOTTOM_INDICATOR_WIDTH_DIV_4*4);
-                }
-                eink_display.write_bottom_indicator(&next_ind_buf, &pre_ind_buf);
-                core::mem::swap(&mut pre_ind_buf, &mut next_ind_buf);
+                eink_display.write_bottom_indicator(true, indicator_pos_current, 0);
+                eink_display.write_bottom_indicator(true, indicator_pos_current, 0);
+                pre_status_var = indicator_pos_current;
 
                 delay.delay(500.millis());
 
@@ -768,46 +780,22 @@ fn main() -> ! {
                         if cur_page == 0 {
                             //i = 999;
                         } else {
-                            cur_page = cur_page - 1;
+                            cur_page = cur_page - 5;
                             let indicator_pos_current: u32 = HEIGHT as u32 - ((cur_page * HEIGHT as u32) / 999);
-                            let mut pos = 0;
-                            for line in 0..HEIGHT {
-                                if indicator_pos_current.abs_diff(line as u32) <= 10 {
-                                    for i in SPLIT_WIDTH..(BOTTOM_INDICATOR_WIDTH_DIV_4*4) {
-                                        next_ind_buf[pos + i] = false; 
-                                    }
-                                } else {
-                                    for i in SPLIT_WIDTH..(BOTTOM_INDICATOR_WIDTH_DIV_4*4) {
-                                        next_ind_buf[pos + i] = true; 
-                                    }
-                                }
-                                pos = pos + (BOTTOM_INDICATOR_WIDTH_DIV_4*4);
-                            }
-                            eink_display.write_bottom_indicator(&next_ind_buf, &pre_ind_buf);
-                            core::mem::swap(&mut pre_ind_buf, &mut next_ind_buf);
+                            eink_display.write_bottom_indicator(false, indicator_pos_current, pre_status_var);
+                            eink_display.write_bottom_indicator(false, indicator_pos_current, pre_status_var);
+                            pre_status_var = indicator_pos_current;
                         }
                     }
                     if right_pin_value > TOUCH_RIGHT_THRESHOLD*2 {
                         if cur_page == 999 {
                             cur_page = 0;
                         } else {
-                            cur_page = cur_page + 1;
+                            cur_page = cur_page + 5;
                             let indicator_pos_current: u32 = HEIGHT as u32 - ((cur_page * HEIGHT as u32) / 999);
-                            let mut pos = 0;
-                            for line in 0..HEIGHT {
-                                if indicator_pos_current.abs_diff(line as u32) <= 10 {
-                                    for i in SPLIT_WIDTH..(BOTTOM_INDICATOR_WIDTH_DIV_4*4) {
-                                        next_ind_buf[pos + i] = false; 
-                                    }
-                                } else {
-                                    for i in SPLIT_WIDTH..(BOTTOM_INDICATOR_WIDTH_DIV_4*4) {
-                                        next_ind_buf[pos + i] = true; 
-                                    }
-                                }
-                                pos = pos + (BOTTOM_INDICATOR_WIDTH_DIV_4*4);
-                            }
-                            eink_display.write_bottom_indicator(&next_ind_buf, &pre_ind_buf);
-                            core::mem::swap(&mut pre_ind_buf, &mut next_ind_buf);
+                            eink_display.write_bottom_indicator(false, indicator_pos_current, pre_status_var);
+                            eink_display.write_bottom_indicator(false, indicator_pos_current, pre_status_var);
+                            pre_status_var = indicator_pos_current;
                         }
                     }
                     if center_pin_value > TOUCH_CENTER_THRESHOLD*2 {
