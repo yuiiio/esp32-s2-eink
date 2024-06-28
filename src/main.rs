@@ -311,7 +311,7 @@ impl EinkDisplay
         const BOTTOM_INDICATOR_WIDTH_DIV_4: usize = 100 / 4;
         const SPLIT_WIDTH: usize = 4/4;
         const BAR_WIDTH: u32= 20;
-        for _cycle in 0..2 {
+        for _cycle in 0..1 {
             self.start_frame();
             for line in 0..HEIGHT {
                 // none
@@ -815,6 +815,8 @@ fn main() -> ! {
             },
             Err(_error) => {
                 /* not found file */
+                eink_display.write_all_black();
+                eink_display.write_all_white();
             },
         };
     }
