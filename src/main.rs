@@ -303,6 +303,57 @@ impl EinkDisplay
             self.end_frame();
         }
     }
+    #[inline(always)]
+    fn write_bottom_indicator(&mut self) { // partial update
+        const BOTTOM_INDICATOR_WIDTH_DIV_4: usize = 100 / 4;
+        for _cycle in 0..4 {
+            self.start_frame();
+            for _line in 0..HEIGHT {
+                // none
+                let four_pixels: u8 = 0b00000000;
+                unsafe {
+                    asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                }
+                self.xstl.set_low();
+                /* can write 4 pixel for onece */
+                for _pos in 0..((WIDTH/4) - BOTTOM_INDICATOR_WIDTH_DIV_4) {
+                    self.xcl.set_high();
+                    self.xcl.set_low();
+                }
+                for _pos in 0..BOTTOM_INDICATOR_WIDTH_DIV_4 {
+                    // white
+                    let four_pixels: u8 = 0b10101010;
+                    unsafe {
+                        asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                    }
+                    self.xcl.set_high();
+                    self.xcl.set_low();
+                }
+                self.xstl.set_high();
+                self.xcl.set_high();
+                self.xcl.set_low();
+
+                self.xle.set_high();
+                self.xle.set_low();
+
+                self.ckv.set_low();
+                //self.delay.delay(1.micros());
+                unsafe {
+                    asm!("nop");
+                    asm!("nop");
+                    asm!("nop");
+                    asm!("nop");
+
+                    asm!("nop");
+                    asm!("nop");
+                    asm!("nop");
+                    asm!("nop");
+                }
+                self.ckv.set_high();
+            }
+            self.end_frame();
+        }
+    }
 }
 
 fn open_4bpp_image<D: embedded_sdmmc::BlockDevice, T: embedded_sdmmc::TimeSource, const MAX_DIRS: usize, const MAX_FILES: usize, const MAX_VOLUMES: usize, U: core::alloc::Allocator>
@@ -562,12 +613,22 @@ fn main() -> ! {
             delay.delay(40.micros());
             touch_out.set_low();
             delay.delay(10.micros());
+            let mut center_pin_value = adc1.read_blocking(&mut touch_center);
+            touch_out.set_high();
+            delay.delay(40.micros());
+            touch_out.set_low();
+            delay.delay(10.micros());
             left_pin_value += adc1.read_blocking(&mut touch_left);
             touch_out.set_high();
             delay.delay(40.micros());
             touch_out.set_low();
             delay.delay(10.micros());
             right_pin_value += adc1.read_blocking(&mut touch_right);
+            touch_out.set_high();
+            delay.delay(40.micros());
+            touch_out.set_low();
+            delay.delay(10.micros());
+            center_pin_value += adc1.read_blocking(&mut touch_center);
             touch_out.set_high();
 
             if left_pin_value > 5090*2 {
@@ -578,13 +639,68 @@ fn main() -> ! {
                 }
                 break 'inner;
             }
-            if right_pin_value > 5160*2 {
+            if right_pin_value > 5170*2 {
                 if i == 999 {
                     i = 0;
                 } else {
                     i = i + 1;
                 }
                 break 'inner;
+            }
+            if center_pin_value > 5160*2 {
+                eink_display.write_bottom_indicator();
+
+                'indicator: loop {
+                    touch_out.set_high();
+                    delay.delay(40.micros());
+                    touch_out.set_low();
+                    delay.delay(10.micros());
+                    let mut left_pin_value = adc1.read_blocking(&mut touch_left);
+                    touch_out.set_high();
+                    delay.delay(40.micros());
+                    touch_out.set_low();
+                    delay.delay(10.micros());
+                    let mut right_pin_value = adc1.read_blocking(&mut touch_right);
+                    touch_out.set_high();
+                    delay.delay(40.micros());
+                    touch_out.set_low();
+                    delay.delay(10.micros());
+                    let mut center_pin_value = adc1.read_blocking(&mut touch_center);
+                    touch_out.set_high();
+                    delay.delay(40.micros());
+                    touch_out.set_low();
+                    delay.delay(10.micros());
+                    left_pin_value += adc1.read_blocking(&mut touch_left);
+                    touch_out.set_high();
+                    delay.delay(40.micros());
+                    touch_out.set_low();
+                    delay.delay(10.micros());
+                    right_pin_value += adc1.read_blocking(&mut touch_right);
+                    touch_out.set_high();
+                    delay.delay(40.micros());
+                    touch_out.set_low();
+                    delay.delay(10.micros());
+                    center_pin_value += adc1.read_blocking(&mut touch_center);
+                    touch_out.set_high();
+
+                    if left_pin_value > 5090*2 {
+                        if i == 0 {
+                            //i = 999;
+                        } else {
+                            i = i - 1;
+                        }
+                    }
+                    if right_pin_value > 5170*2 {
+                        if i == 999 {
+                            i = 0;
+                        } else {
+                            i = i + 1;
+                        }
+                    }
+                    if center_pin_value > 5160*2 {
+                        break 'inner
+                    }
+                }
             }
         }
         file_name.clear();
