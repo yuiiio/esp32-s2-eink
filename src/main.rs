@@ -223,7 +223,7 @@ impl EinkDisplay
 
     #[inline(always)]
     fn write_all_black(&mut self) {
-        for _cycle in 0..4 {
+        for _cycle in 0..2 {
             // black
             let four_pixels: u8 = 0b01010101;
             unsafe {
@@ -264,7 +264,7 @@ impl EinkDisplay
     }
     #[inline(always)]
     fn write_all_white(&mut self) {
-        for _cycle in 0..4 {
+        for _cycle in 0..2 {
             // white
             let four_pixels: u8 = 0b10101010;
             unsafe {
@@ -308,10 +308,10 @@ impl EinkDisplay
         first_commit: bool,
         status_var: u32,
         pre_status_var: u32) { // partial update
-        const BOTTOM_INDICATOR_WIDTH_DIV_4: usize = 40 / 4;
+        const BOTTOM_INDICATOR_WIDTH_DIV_4: usize = 100 / 4;
         const SPLIT_WIDTH: usize = 4/4;
         const BAR_WIDTH: u32= 20;
-        for _cycle in 0..1 {
+        for _cycle in 0..2 {
             self.start_frame();
             for line in 0..HEIGHT {
                 // none
@@ -738,7 +738,6 @@ fn main() -> ! {
                 let mut pre_status_var: u32 = 0;
                 let indicator_pos_current: u32 = HEIGHT as u32 - ((cur_page * HEIGHT as u32) / 999);
                 eink_display.write_bottom_indicator(true, indicator_pos_current, 0);
-                eink_display.write_bottom_indicator(true, indicator_pos_current, 0);
                 pre_status_var = indicator_pos_current;
 
                 delay.delay(500.millis());
@@ -783,7 +782,6 @@ fn main() -> ! {
                             cur_page = cur_page - 5;
                             let indicator_pos_current: u32 = HEIGHT as u32 - ((cur_page * HEIGHT as u32) / 999);
                             eink_display.write_bottom_indicator(false, indicator_pos_current, pre_status_var);
-                            eink_display.write_bottom_indicator(false, indicator_pos_current, pre_status_var);
                             pre_status_var = indicator_pos_current;
                         }
                     }
@@ -793,7 +791,6 @@ fn main() -> ! {
                         } else {
                             cur_page = cur_page + 5;
                             let indicator_pos_current: u32 = HEIGHT as u32 - ((cur_page * HEIGHT as u32) / 999);
-                            eink_display.write_bottom_indicator(false, indicator_pos_current, pre_status_var);
                             eink_display.write_bottom_indicator(false, indicator_pos_current, pre_status_var);
                             pre_status_var = indicator_pos_current;
                         }
