@@ -304,9 +304,9 @@ impl EinkDisplay
         }
     }
     #[inline(always)]
-    fn write_bottom_indicator(&mut self) { // partial update
-        const BOTTOM_INDICATOR_WIDTH_DIV_4: usize = 100 / 4;
-        for _cycle in 0..4 {
+    fn write_bottom_indicator(&mut self, indicator_buf: &[bool; HEIGHT * BOTTOM_INDICATOR_WIDTH_DIV_4 * 4]) { // partial update
+        for _cycle in 0..1 {
+            let mut pos = 0;
             self.start_frame();
             for _line in 0..HEIGHT {
                 // none
@@ -316,13 +316,21 @@ impl EinkDisplay
                 }
                 self.xstl.set_low();
                 /* can write 4 pixel for onece */
-                for _pos in 0..((WIDTH/4) - BOTTOM_INDICATOR_WIDTH_DIV_4) {
+                for _i in 0..((WIDTH/4) - BOTTOM_INDICATOR_WIDTH_DIV_4) { //skip not changed area
                     self.xcl.set_high();
                     self.xcl.set_low();
                 }
-                for _pos in 0..BOTTOM_INDICATOR_WIDTH_DIV_4 {
-                    // white
-                    let four_pixels: u8 = 0b10101010;
+                for _i in 0..BOTTOM_INDICATOR_WIDTH_DIV_4 {
+                    //white
+                    let mut four_pixels: u8 = 0b10101010;
+                    if indicator_buf[pos] == false { four_pixels ^= 0b11000000 } // black
+                    pos = pos + 1;
+                    if indicator_buf[pos] == false { four_pixels ^= 0b00110000 }
+                    pos = pos + 1;
+                    if indicator_buf[pos] == false { four_pixels ^= 0b00001100 }
+                    pos = pos + 1;
+                    if indicator_buf[pos] == false { four_pixels ^= 0b00000011 }
+                    pos = pos + 1;
                     unsafe {
                         asm!("wur.gpio_out {0}", in(reg) four_pixels);
                     }
@@ -367,6 +375,8 @@ where embedded_sdmmc::Error<SdCardError>: From<embedded_sdmmc::Error<<D as Block
     file.read(img_buf)?;
     Ok(())
 }
+
+const BOTTOM_INDICATOR_WIDTH_DIV_4: usize = 100 / 4;
 
 #[entry]
 fn main() -> ! {
@@ -555,7 +565,7 @@ fn main() -> ! {
 
     let mut file_name = String::with_capacity(8); //xxx.tif
 
-    let mut i: u32 = if last_opend_num > 999 {
+    let mut cur_page: u32 = if last_opend_num > 999 {
         0
     } else {
         last_opend_num
@@ -596,6 +606,12 @@ fn main() -> ! {
     }
     */
 
+    const TOUCH_LEFT_THRESHOLD: u16 = 5090;
+    const TOUCH_RIGHT_THRESHOLD: u16 = 5180;
+    const TOUCH_CENTER_THRESHOLD: u16 = 5160;
+
+    // no grayscale so /2 // true: white, false: black
+    let mut indicator_buf: [bool; HEIGHT * BOTTOM_INDICATOR_WIDTH_DIV_4 * 4] = [true; HEIGHT * BOTTOM_INDICATOR_WIDTH_DIV_4 * 4];
     led.set_low();
     loop {
         'inner: loop {
@@ -631,24 +647,36 @@ fn main() -> ! {
             center_pin_value += adc1.read_blocking(&mut touch_center);
             touch_out.set_high();
 
-            if left_pin_value > 5090*2 {
-                if i == 0 {
+            if left_pin_value > TOUCH_LEFT_THRESHOLD*2 {
+                if cur_page == 0 {
                     //i = 999;
                 } else {
-                    i = i - 1;
+                    cur_page = cur_page - 1;
                 }
                 break 'inner;
             }
-            if right_pin_value > 5170*2 {
-                if i == 999 {
-                    i = 0;
+            if right_pin_value > TOUCH_RIGHT_THRESHOLD*2 {
+                if cur_page == 999 {
+                    cur_page = 0;
                 } else {
-                    i = i + 1;
+                    cur_page = cur_page + 1;
                 }
                 break 'inner;
             }
-            if center_pin_value > 5160*2 {
-                eink_display.write_bottom_indicator();
+            if center_pin_value > TOUCH_CENTER_THRESHOLD*2 {
+                let indicator_pos_current: u32 = HEIGHT as u32 - ((cur_page * HEIGHT as u32) / 999);
+                let mut pos = 0;
+                for line in 0..HEIGHT {
+                    if indicator_pos_current.abs_diff(line as u32) <= 10 {
+                        for i in 0..(BOTTOM_INDICATOR_WIDTH_DIV_4*4) {
+                            indicator_buf[pos + i] = false; 
+                        }
+                    }
+                    pos = pos + (BOTTOM_INDICATOR_WIDTH_DIV_4*4);
+                }
+                eink_display.write_bottom_indicator(&indicator_buf);
+
+                delay.delay(500.millis());
 
                 'indicator: loop {
                     touch_out.set_high();
@@ -683,34 +711,58 @@ fn main() -> ! {
                     center_pin_value += adc1.read_blocking(&mut touch_center);
                     touch_out.set_high();
 
-                    if left_pin_value > 5090*2 {
-                        if i == 0 {
+                    if left_pin_value > TOUCH_LEFT_THRESHOLD*2 {
+                        if cur_page == 0 {
                             //i = 999;
                         } else {
-                            i = i - 1;
+                            cur_page = cur_page - 1;
+                            indicator_buf = [true; HEIGHT * BOTTOM_INDICATOR_WIDTH_DIV_4 * 4];
+                            let indicator_pos_current: u32 = HEIGHT as u32 - ((cur_page * HEIGHT as u32) / 999);
+                            let mut pos = 0;
+                            for line in 0..HEIGHT {
+                                if indicator_pos_current.abs_diff(line as u32) <= 10 {
+                                    for i in 0..(BOTTOM_INDICATOR_WIDTH_DIV_4*4) {
+                                        indicator_buf[pos + i] = false; 
+                                    }
+                                }
+                                pos = pos + (BOTTOM_INDICATOR_WIDTH_DIV_4*4);
+                            }
+                            eink_display.write_bottom_indicator(&indicator_buf);
                         }
                     }
-                    if right_pin_value > 5170*2 {
-                        if i == 999 {
-                            i = 0;
+                    if right_pin_value > TOUCH_RIGHT_THRESHOLD*2 {
+                        if cur_page == 999 {
+                            cur_page = 0;
                         } else {
-                            i = i + 1;
+                            cur_page = cur_page + 1;
+                            indicator_buf = [true; HEIGHT * BOTTOM_INDICATOR_WIDTH_DIV_4 * 4];
+                            let indicator_pos_current: u32 = HEIGHT as u32 - ((cur_page * HEIGHT as u32) / 999);
+                            let mut pos = 0;
+                            for line in 0..HEIGHT {
+                                if indicator_pos_current.abs_diff(line as u32) <= 10 {
+                                    for i in 0..(BOTTOM_INDICATOR_WIDTH_DIV_4*4) {
+                                        indicator_buf[pos + i] = false; 
+                                    }
+                                }
+                                pos = pos + (BOTTOM_INDICATOR_WIDTH_DIV_4*4);
+                            }
+                            eink_display.write_bottom_indicator(&indicator_buf);
                         }
                     }
-                    if center_pin_value > 5160*2 {
+                    if center_pin_value > TOUCH_CENTER_THRESHOLD*2 {
                         break 'inner
                     }
                 }
             }
         }
         file_name.clear();
-        write!(&mut file_name, "{0: >03}.tif", i).unwrap();
+        write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();
         match open_4bpp_image(&mut root_dir, &mut img_buf, &file_name) {
             Ok(_) => {
                 //eink_display.write_4bpp_reverse_image(&img_buf);
                 eink_display.write_all_black();
                 eink_display.write_4bpp_image(&img_buf);
-                flash.write(flash_addr, &i.to_be_bytes()).unwrap();
+                flash.write(flash_addr, &cur_page.to_be_bytes()).unwrap();
             },
             Err(_error) => {
                 /* not found file */
