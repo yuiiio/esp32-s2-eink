@@ -777,25 +777,26 @@ fn main() -> ! {
                     center_pin_value += adc1.read_blocking(&mut touch_center);
                     touch_out.set_high();
 
+                    const SKIP_PAGE: u32 = 5;
                     if left_pin_value > TOUCH_LEFT_THRESHOLD*2 {
-                        if cur_page == 0 {
-                            //i = 999;
+                        if cur_page < SKIP_PAGE {
+                            cur_page = 999; //circling
                         } else {
-                            cur_page = cur_page - 5;
-                            let indicator_pos_current: u32 = HEIGHT as u32 - ((cur_page * HEIGHT as u32) / 999);
-                            eink_display.write_bottom_indicator(false, indicator_pos_current, pre_status_var);
-                            pre_status_var = indicator_pos_current;
+                            cur_page = cur_page - SKIP_PAGE;
                         }
+                        let indicator_pos_current: u32 = HEIGHT as u32 - ((cur_page * HEIGHT as u32) / 999);
+                        eink_display.write_bottom_indicator(false, indicator_pos_current, pre_status_var);
+                        pre_status_var = indicator_pos_current;
                     }
                     if right_pin_value > TOUCH_RIGHT_THRESHOLD*2 {
-                        if cur_page == 999 {
-                            cur_page = 0;
+                        if cur_page > 999 - SKIP_PAGE {
+                            cur_page = 0; //circling
                         } else {
-                            cur_page = cur_page + 5;
-                            let indicator_pos_current: u32 = HEIGHT as u32 - ((cur_page * HEIGHT as u32) / 999);
-                            eink_display.write_bottom_indicator(false, indicator_pos_current, pre_status_var);
-                            pre_status_var = indicator_pos_current;
+                            cur_page = cur_page + SKIP_PAGE;
                         }
+                        let indicator_pos_current: u32 = HEIGHT as u32 - ((cur_page * HEIGHT as u32) / 999);
+                        eink_display.write_bottom_indicator(false, indicator_pos_current, pre_status_var);
+                        pre_status_var = indicator_pos_current;
                     }
                     if center_pin_value > TOUCH_CENTER_THRESHOLD*2 {
                         break 'inner
