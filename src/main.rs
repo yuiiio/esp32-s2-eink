@@ -636,9 +636,18 @@ fn main() -> ! {
     let mut volume0 = volume_manager.open_volume(VolumeIdx(0)).expect("failed to open volume");
     let mut root_dir = volume0.open_root_dir().expect("failed to open volume");
 
+    let mut root_dir_listing = Vec::with_capacity_in(999, &PSRAM_ALLOCATOR); //DirEntry is 32 bytes
+    root_dir.iterate_dir(|d| {
+        root_dir_listing.push(d.clone())
+    }).unwrap();
+
+    let mut root_dir_files = root_dir_listing.len() as u32;
+
+    root_dir_files = if root_dir_files > 999 { 999 } else { root_dir_files };
+
     let mut file_name = String::with_capacity(8); //xxx.tif
 
-    let mut cur_page: u32 = if last_opend_num > 999 {
+    let mut cur_page: u32 = if last_opend_num > root_dir_files {
         0
     } else {
         last_opend_num
@@ -722,14 +731,14 @@ fn main() -> ! {
 
             if left_pin_value > TOUCH_LEFT_THRESHOLD*2 {
                 if cur_page == 0 {
-                    //i = 999;
+                    //i = root_dir_files;
                 } else {
                     cur_page = cur_page - 1;
                 }
                 break 'inner;
             }
             if right_pin_value > TOUCH_RIGHT_THRESHOLD*2 {
-                if cur_page == 999 {
+                if cur_page == root_dir_files {
                     cur_page = 0;
                 } else {
                     cur_page = cur_page + 1;
@@ -738,7 +747,7 @@ fn main() -> ! {
             }
             if center_pin_value > TOUCH_CENTER_THRESHOLD*2 {
                 let mut pre_status_var: u32 = 0;
-                let indicator_pos_current: u32 = HEIGHT as u32 - ((cur_page * HEIGHT as u32) / 999);
+                let indicator_pos_current: u32 = HEIGHT as u32 - ((cur_page * HEIGHT as u32) / root_dir_files);
                 eink_display.write_bottom_indicator(true, indicator_pos_current, 0);
                 pre_status_var = indicator_pos_current;
 
@@ -780,21 +789,21 @@ fn main() -> ! {
                     const SKIP_PAGE: u32 = 5;
                     if left_pin_value > TOUCH_LEFT_THRESHOLD*2 {
                         if cur_page < SKIP_PAGE {
-                            cur_page = 999; //circling
+                            cur_page = root_dir_files; //circling
                         } else {
                             cur_page = cur_page - SKIP_PAGE;
                         }
-                        let indicator_pos_current: u32 = HEIGHT as u32 - ((cur_page * HEIGHT as u32) / 999);
+                        let indicator_pos_current: u32 = HEIGHT as u32 - ((cur_page * HEIGHT as u32) / root_dir_files);
                         eink_display.write_bottom_indicator(false, indicator_pos_current, pre_status_var);
                         pre_status_var = indicator_pos_current;
                     }
                     if right_pin_value > TOUCH_RIGHT_THRESHOLD*2 {
-                        if cur_page > 999 - SKIP_PAGE {
+                        if cur_page > root_dir_files - SKIP_PAGE {
                             cur_page = 0; //circling
                         } else {
                             cur_page = cur_page + SKIP_PAGE;
                         }
-                        let indicator_pos_current: u32 = HEIGHT as u32 - ((cur_page * HEIGHT as u32) / 999);
+                        let indicator_pos_current: u32 = HEIGHT as u32 - ((cur_page * HEIGHT as u32) / root_dir_files);
                         eink_display.write_bottom_indicator(false, indicator_pos_current, pre_status_var);
                         pre_status_var = indicator_pos_current;
                     }
