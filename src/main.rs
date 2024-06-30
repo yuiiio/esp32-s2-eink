@@ -691,8 +691,10 @@ fn main() -> ! {
     const TOUCH_LEFT_THRESHOLD: u16 = 5100;
     const TOUCH_RIGHT_THRESHOLD: u16 = 5160;
     const TOUCH_CENTER_THRESHOLD: u16 = 5140;
+    const TOUCH_TOP_THRESHOLD: u16 = 3600;
     const TOUCH_PULSE_HIGH_DELAY: u32 = 40;
     const TOUCH_PULSE_LOW_DELAY: u32 = 10;
+    const TOUCH_TOP_PULSE_LOW_DELAY: u32 = 0;
 
     led.set_low();
     loop {
@@ -715,6 +717,11 @@ fn main() -> ! {
             touch_out.set_high();
             delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
             touch_out.set_low();
+            delay.delay_micros(TOUCH_TOP_PULSE_LOW_DELAY);
+            let mut top_left_pin_value = adc1.read_blocking(&mut touch_top);
+            touch_out.set_high();
+            delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
+            touch_out.set_low();
             delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
             left_pin_value += adc1.read_blocking(&mut touch_left);
             touch_out.set_high();
@@ -728,6 +735,15 @@ fn main() -> ! {
             delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
             center_pin_value += adc1.read_blocking(&mut touch_center);
             touch_out.set_high();
+            touch_out.set_low();
+            delay.delay_micros(TOUCH_TOP_PULSE_LOW_DELAY);
+            top_left_pin_value += adc1.read_blocking(&mut touch_top);
+            touch_out.set_high();
+
+            if top_left_pin_value > TOUCH_TOP_THRESHOLD*2 {
+                eink_display.write_all_white();
+                eink_display.write_all_black();
+            }
 
             if left_pin_value > TOUCH_LEFT_THRESHOLD*2 {
                 if cur_page == 0 {
