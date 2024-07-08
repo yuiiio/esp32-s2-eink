@@ -178,7 +178,7 @@ impl EinkDisplay
 
     #[inline(always)]
     fn write_4bpp_image<U: core::alloc::Allocator>(&mut self, img_buf: &Vec<u8, U>) {
-        for grayscale in [4, 7, 10] {
+        for grayscale in [4, 7, 12] {
             let mut pos: usize = 0;
             self.start_frame();
             for _line in 0..HEIGHT {
@@ -688,13 +688,13 @@ fn main() -> ! {
     }
     */
 
-    const TOUCH_LEFT_THRESHOLD: u16 = 5340;
+    const TOUCH_LEFT_THRESHOLD: u16 = 5350;
     const TOUCH_RIGHT_THRESHOLD: u16 = 5390;
     const TOUCH_CENTER_THRESHOLD: u16 = 5380;
-    const TOUCH_TOP_THRESHOLD: u16 = 3400;
+    const TOUCH_TOP_THRESHOLD: u16 = 5450;
     const TOUCH_PULSE_HIGH_DELAY: u32 = 40;
     const TOUCH_PULSE_LOW_DELAY: u32 = 9;
-    const TOUCH_TOP_PULSE_LOW_DELAY: u32 = 0;
+    const TOUCH_TOP_PULSE_LOW_DELAY: u32 = 3;
 
     led.set_low();
     loop {
