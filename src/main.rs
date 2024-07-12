@@ -663,39 +663,37 @@ fn main() -> ! {
     let mut touch_top = adc1_config.enable_pin(io.pins.gpio5, Attenuation::Attenuation11dB);
     let mut adc1 = Adc::new(peripherals.ADC1, adc1_config);
 
-    /*
-    let mut f = 0;
-    loop {
-        touch_out.set_high();
-        delay.delay(40.micros());
-        touch_out.set_low();
-        delay.delay(10.micros());
-        let left_pin_value = adc1.read_blocking(&mut touch_left);
-        touch_out.set_high();
-        delay.delay(40.micros());
-        touch_out.set_low();
-        delay.delay(10.micros());
-        let right_pin_value = adc1.read_blocking(&mut touch_right);
-        touch_out.set_high();
-        if !usb_dev.poll(&mut [&mut serial.0]) {
-            continue;
-        }
-        f = f+1;
-        if f > 4000 {
-            write!(serial, "left: {}, right: {}\n", left_pin_value, right_pin_value).unwrap();
-            f = 0;
-        }
-    }
-    */
-
     const TOUCH_LEFT_THRESHOLD: u16 = 5350;
     const TOUCH_RIGHT_THRESHOLD: u16 = 5390;
     const TOUCH_CENTER_THRESHOLD: u16 = 5380;
     const TOUCH_TOP_THRESHOLD: u16 = 5450;
-    const TOUCH_PULSE_HIGH_DELAY: u32 = 40;
-    const TOUCH_PULSE_LOW_DELAY: u32 = 9;
+    const TOUCH_PULSE_HIGH_DELAY: u32 = 40; // 40 000 nanosecs
+    const TOUCH_PULSE_LOW_DELAY: u32 = 9; // 9 000 nanosecs
     const TOUCH_TOP_PULSE_LOW_DELAY: u32 = 3;
 
+    const RECORD_LEN: usize = 20;
+    let mut pulse_record: [u16; RECORD_LEN]= [0; RECORD_LEN];
+    // ADC_ATTEN_DB_11: 0~2500mv
+    // 12bit adc(max 4096(1<<12))
+    loop {
+        touch_out.set_high();
+        delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
+        touch_out.set_low();
+        //delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
+        // timer 
+        for i in 0..RECORD_LEN {
+            pulse_record[i] = adc1.read_blocking(&mut touch_left);
+            delay.delay_nanos(100);
+            // wait nano secs?
+        }
+        // timer / RECORD_LEN = freq
+        usb_dev.poll(&mut [&mut serial.0]);
+        for i in 0..RECORD_LEN {
+            serial.0.write(&[(pulse_record[i] >> 8) as u8, (pulse_record[i] & 0xff) as u8]).ok();
+        }
+    }
+
+/*
     led.set_low();
     loop {
         'inner: loop {
@@ -845,4 +843,5 @@ fn main() -> ! {
             },
         };
     }
+*/
 }
