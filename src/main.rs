@@ -200,7 +200,7 @@ impl EinkDisplay
     }
     #[inline(always)]
     fn write_4bpp_reverse_image<U: core::alloc::Allocator>(&mut self, img_buf: &Vec<u8, U>) {
-        for grayscale in 6..8 {
+        for grayscale in [4] {
             let mut pos: usize = 0;
             self.start_frame();
             for _line in 0..HEIGHT {
@@ -565,11 +565,15 @@ fn main() -> ! {
 
     let mut volume_manager = VolumeManager::new(sdcard, FakeTimesource{});
 
-    let mut img_buf: Vec<u8, _> = Vec::with_capacity_in(FOUR_BPP_BUF_SIZE, &PSRAM_ALLOCATOR);
+    let mut img_buf1: Vec<u8, _> = Vec::with_capacity_in(FOUR_BPP_BUF_SIZE, &PSRAM_ALLOCATOR);
     for _i in 0..FOUR_BPP_BUF_SIZE {
-        img_buf.push(0u8);
+        img_buf1.push(0u8);
     }
     // too big for dram? so use psram(2M)
+    let mut img_buf2: Vec<u8, _> = Vec::with_capacity_in(FOUR_BPP_BUF_SIZE, &PSRAM_ALLOCATOR);
+    for _i in 0..FOUR_BPP_BUF_SIZE {
+        img_buf2.push(0u8);
+    }
     
 
     
@@ -646,6 +650,9 @@ fn main() -> ! {
     root_dir_files = if root_dir_files > 999 { 999 } else { root_dir_files };
 
     let mut file_name = String::with_capacity(8); //xxx.tif
+
+    let mut pre_buf = &mut img_buf1;
+    let mut next_buf = &mut img_buf2;
 
     let mut cur_page: u32 = if last_opend_num > root_dir_files {
         0
@@ -800,11 +807,11 @@ fn main() -> ! {
         }
         file_name.clear();
         write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();
-        match open_4bpp_image(&mut root_dir, &mut img_buf, &file_name) {
+        match open_4bpp_image(&mut root_dir, &mut next_buf, &file_name) {
             Ok(_) => {
-                //eink_display.write_4bpp_reverse_image(&img_buf);
-                eink_display.write_all_black();
-                eink_display.write_4bpp_image(&img_buf);
+                eink_display.write_4bpp_reverse_image(&pre_buf);
+                //eink_display.write_all_black();
+                eink_display.write_4bpp_image(&next_buf);
                 flash.write(flash_addr, &cur_page.to_be_bytes()).unwrap();
             },
             Err(_error) => {
@@ -813,5 +820,6 @@ fn main() -> ! {
                 eink_display.write_all_white();
             },
         };
+        core::mem::swap(pre_buf, next_buf);
     }
 }
