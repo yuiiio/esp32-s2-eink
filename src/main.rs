@@ -663,12 +663,12 @@ fn main() -> ! {
     let mut touch_top = adc1_config.enable_pin(io.pins.gpio5, Attenuation::Attenuation11dB);
     let mut adc1 = Adc::new(peripherals.ADC1, adc1_config);
 
-    const TOUCH_LEFT_THRESHOLD: u16 = 5500;
-    const TOUCH_RIGHT_THRESHOLD: u16 = 5500;
-    const TOUCH_CENTER_THRESHOLD: u16 = 5500;
-    const TOUCH_TOP_THRESHOLD: u16 = 5500;
+    const TOUCH_LEFT_THRESHOLD: u16 = 5000;
+    const TOUCH_RIGHT_THRESHOLD: u16 = 5000;
+    const TOUCH_CENTER_THRESHOLD: u16 = 5000;
+    const TOUCH_TOP_THRESHOLD: u16 = 5000;
     const TOUCH_PULSE_HIGH_DELAY_NS: u32 = 400000;
-    const TOUCH_PULSE_LOW_DELAY_NS: u32 = 50;
+    const TOUCH_PULSE_LOW_DELAY_NS: u32 = 1;
 
     /*
     const RECORD_LEN: usize = 20;
@@ -679,13 +679,12 @@ fn main() -> ! {
         touch_out.set_high();
         delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
         touch_out.set_low();
-        delay.delay_nanos(50);
+        delay.delay_nanos(1);
         adc1.read_blocking(&mut touch_left); // first read goes always ~= 8192 so ignore
         // timer 
         for i in 0..RECORD_LEN {
             pulse_record[i] = adc1.read_blocking(&mut touch_left);
-            delay.delay_nanos(50);
-            // wait nano secs?
+            delay.delay_nanos(1);
         }
         // timer / RECORD_LEN = freq
         usb_dev.poll(&mut [&mut serial.0]);
