@@ -663,27 +663,26 @@ fn main() -> ! {
     let mut touch_top = adc1_config.enable_pin(io.pins.gpio5, Attenuation::Attenuation11dB);
     let mut adc1 = Adc::new(peripherals.ADC1, adc1_config);
 
-    const TOUCH_LEFT_THRESHOLD: u16 = 5350;
-    const TOUCH_RIGHT_THRESHOLD: u16 = 5390;
-    const TOUCH_CENTER_THRESHOLD: u16 = 5380;
-    const TOUCH_TOP_THRESHOLD: u16 = 5450;
-    const TOUCH_PULSE_HIGH_DELAY: u32 = 40; // 40 000 nanosecs
-    const TOUCH_PULSE_LOW_DELAY: u32 = 9; // 9 000 nanosecs
-    const TOUCH_TOP_PULSE_LOW_DELAY: u32 = 3;
+    const TOUCH_LEFT_THRESHOLD: u16 = 5500;
+    const TOUCH_RIGHT_THRESHOLD: u16 = 5500;
+    const TOUCH_CENTER_THRESHOLD: u16 = 5500;
+    const TOUCH_TOP_THRESHOLD: u16 = 5500;
+    const TOUCH_PULSE_HIGH_DELAY_NS: u32 = 400000;
+    const TOUCH_PULSE_LOW_DELAY_NS: u32 = 50;
 
+    /*
     const RECORD_LEN: usize = 20;
     let mut pulse_record: [u16; RECORD_LEN]= [0; RECORD_LEN];
     // ADC_ATTEN_DB_11: 0~2500mv
-    // 12bit adc(max 4096(1<<12))
+    // 12bit adc(but seems max 8192(1<<13) ?)
     loop {
         touch_out.set_high();
-        delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
+        delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
         touch_out.set_low();
-        //delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
         // timer 
         for i in 0..RECORD_LEN {
-            pulse_record[i] = adc1.read_blocking(&mut touch_left);
-            delay.delay_nanos(100);
+            pulse_record[i] = adc1.read_blocking(&mut touch_top);
+            delay.delay_nanos(50);
             // wait nano secs?
         }
         // timer / RECORD_LEN = freq
@@ -692,58 +691,38 @@ fn main() -> ! {
             serial.0.write(&[(pulse_record[i] >> 8) as u8, (pulse_record[i] & 0xff) as u8]).ok();
         }
     }
+    */
 
-/*
     led.set_low();
     loop {
         'inner: loop {
             touch_out.set_high();
-            delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
+            delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
             touch_out.set_low();
-            delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
+            delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
             let mut left_pin_value = adc1.read_blocking(&mut touch_left);
             touch_out.set_high();
-            delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
+            delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
             touch_out.set_low();
-            delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
+            delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
             let mut right_pin_value = adc1.read_blocking(&mut touch_right);
             touch_out.set_high();
-            delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
+            delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
             touch_out.set_low();
-            delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
+            delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
             let mut center_pin_value = adc1.read_blocking(&mut touch_center);
             touch_out.set_high();
-            delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
+            delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
             touch_out.set_low();
-            delay.delay_micros(TOUCH_TOP_PULSE_LOW_DELAY);
+            delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
             let mut top_left_pin_value = adc1.read_blocking(&mut touch_top);
-            touch_out.set_high();
-            delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
-            touch_out.set_low();
-            delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
-            left_pin_value += adc1.read_blocking(&mut touch_left);
-            touch_out.set_high();
-            delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
-            touch_out.set_low();
-            delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
-            right_pin_value += adc1.read_blocking(&mut touch_right);
-            touch_out.set_high();
-            delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
-            touch_out.set_low();
-            delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
-            center_pin_value += adc1.read_blocking(&mut touch_center);
-            touch_out.set_high();
-            touch_out.set_low();
-            delay.delay_micros(TOUCH_TOP_PULSE_LOW_DELAY);
-            top_left_pin_value += adc1.read_blocking(&mut touch_top);
-            touch_out.set_high();
 
-            if top_left_pin_value > TOUCH_TOP_THRESHOLD*2 {
+            if top_left_pin_value > TOUCH_TOP_THRESHOLD {
                 eink_display.write_all_white();
                 eink_display.write_all_black();
             }
 
-            if left_pin_value > TOUCH_LEFT_THRESHOLD*2 {
+            if left_pin_value > TOUCH_LEFT_THRESHOLD {
                 if cur_page == 0 {
                     //i = root_dir_files;
                 } else {
@@ -751,7 +730,7 @@ fn main() -> ! {
                 }
                 break 'inner;
             }
-            if right_pin_value > TOUCH_RIGHT_THRESHOLD*2 {
+            if right_pin_value > TOUCH_RIGHT_THRESHOLD {
                 if cur_page == root_dir_files {
                     cur_page = 0;
                 } else {
@@ -759,7 +738,7 @@ fn main() -> ! {
                 }
                 break 'inner;
             }
-            if center_pin_value > TOUCH_CENTER_THRESHOLD*2 {
+            if center_pin_value > TOUCH_CENTER_THRESHOLD {
                 let mut pre_status_var: u32 = 0;
                 let indicator_pos_current: u32 = HEIGHT as u32 - ((cur_page * HEIGHT as u32) / root_dir_files);
                 eink_display.write_bottom_indicator(true, indicator_pos_current, 0);
@@ -769,39 +748,23 @@ fn main() -> ! {
 
                 'indicator: loop {
                     touch_out.set_high();
-                    delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
+                    delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
                     touch_out.set_low();
-                    delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
+                    delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
                     let mut left_pin_value = adc1.read_blocking(&mut touch_left);
                     touch_out.set_high();
-                    delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
+                    delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
                     touch_out.set_low();
-                    delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
+                    delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
                     let mut right_pin_value = adc1.read_blocking(&mut touch_right);
                     touch_out.set_high();
-                    delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
+                    delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
                     touch_out.set_low();
-                    delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
+                    delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
                     let mut center_pin_value = adc1.read_blocking(&mut touch_center);
-                    touch_out.set_high();
-                    delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
-                    touch_out.set_low();
-                    delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
-                    left_pin_value += adc1.read_blocking(&mut touch_left);
-                    touch_out.set_high();
-                    delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
-                    touch_out.set_low();
-                    delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
-                    right_pin_value += adc1.read_blocking(&mut touch_right);
-                    touch_out.set_high();
-                    delay.delay_micros(TOUCH_PULSE_HIGH_DELAY);
-                    touch_out.set_low();
-                    delay.delay_micros(TOUCH_PULSE_LOW_DELAY);
-                    center_pin_value += adc1.read_blocking(&mut touch_center);
-                    touch_out.set_high();
 
                     const SKIP_PAGE: u32 = 5;
-                    if left_pin_value > TOUCH_LEFT_THRESHOLD*2 {
+                    if left_pin_value > TOUCH_LEFT_THRESHOLD {
                         if cur_page < SKIP_PAGE {
                             cur_page = root_dir_files; //circling
                         } else {
@@ -811,7 +774,7 @@ fn main() -> ! {
                         eink_display.write_bottom_indicator(false, indicator_pos_current, pre_status_var);
                         pre_status_var = indicator_pos_current;
                     }
-                    if right_pin_value > TOUCH_RIGHT_THRESHOLD*2 {
+                    if right_pin_value > TOUCH_RIGHT_THRESHOLD {
                         if cur_page > root_dir_files - SKIP_PAGE {
                             cur_page = 0; //circling
                         } else {
@@ -821,7 +784,7 @@ fn main() -> ! {
                         eink_display.write_bottom_indicator(false, indicator_pos_current, pre_status_var);
                         pre_status_var = indicator_pos_current;
                     }
-                    if center_pin_value > TOUCH_CENTER_THRESHOLD*2 {
+                    if center_pin_value > TOUCH_CENTER_THRESHOLD {
                         break 'inner
                     }
                 }
@@ -843,5 +806,4 @@ fn main() -> ! {
             },
         };
     }
-*/
 }
