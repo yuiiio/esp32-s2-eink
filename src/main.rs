@@ -94,6 +94,13 @@ const HEIGHT: usize = 1072;
 const WIDTH: usize = 1448;
 
 const FOUR_BPP_BUF_SIZE: usize = WIDTH*HEIGHT*4/8;
+// 4bpp 776.128 KBytes
+const TWO_BPP_BUF_SIZE: usize = WIDTH*HEIGHT*2/8;
+// 2bpp 388.064 KBytes
+
+// PSRAM(2MBytes:2000KBytes)
+// 4bpp: 2 images
+// 2bpp: 5 images
 
 struct EinkDisplay {
     pub mode1: AnyOutput<'static>,
@@ -174,6 +181,28 @@ impl EinkDisplay
             asm!("nop");
         }
         self.ckv.set_high();
+    }
+
+    #[inline(always)]
+    fn write_2bpp_image<U: core::alloc::Allocator>(&mut self, img_buf: &Vec<u8, U>) {
+        for grayscale in [1, 2] { // 0 1 2 3
+            let mut pos: usize = 0;
+            self.start_frame();
+            for _line in 0..HEIGHT {
+                let mut buf: [u8; WIDTH/4] = [0u8; WIDTH/4];
+                for i in 0..(WIDTH/4) {
+                    let mut b: u8 = 0b10101010; // white
+                    if (img_buf[pos] >> 6) <= grayscale { b ^= 0b11000000 };//reverse => black 
+                    if (img_buf[pos] >> 4 & 0b00000011) <= grayscale { b ^= 0b00110000 };
+                    if (img_buf[pos] >> 2 & 0b00000011) <= grayscale { b ^= 0b00001100 };
+                    if (img_buf[pos] & 0b00000011) <= grayscale { b ^= 0b00000011 };
+                    pos += 1;
+                    buf[i] = b;
+                }
+                self.write_row(&buf);
+            }
+            self.end_frame();
+        }
     }
 
     #[inline(always)]
@@ -565,8 +594,8 @@ fn main() -> ! {
 
     let mut volume_manager = VolumeManager::new(sdcard, FakeTimesource{});
 
-    let mut img_buf: Vec<u8, _> = Vec::with_capacity_in(FOUR_BPP_BUF_SIZE, &PSRAM_ALLOCATOR);
-    for _i in 0..FOUR_BPP_BUF_SIZE {
+    let mut img_buf: Vec<u8, _> = Vec::with_capacity_in(TWO_BPP_BUF_SIZE, &PSRAM_ALLOCATOR);
+    for _i in 0..TWO_BPP_BUF_SIZE {
         img_buf.push(0u8);
     }
     // too big for dram? so use psram(2M)
@@ -804,7 +833,7 @@ fn main() -> ! {
             Ok(_) => {
                 //eink_display.write_4bpp_reverse_image(&img_buf);
                 eink_display.write_all_black();
-                eink_display.write_4bpp_image(&img_buf);
+                eink_display.write_2bpp_image(&img_buf);
                 flash.write(flash_addr, &cur_page.to_be_bytes()).unwrap();
             },
             Err(_error) => {
