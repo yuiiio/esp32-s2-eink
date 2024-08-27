@@ -200,18 +200,19 @@ impl EinkDisplay
     }
     #[inline(always)]
     fn write_4bpp_reverse_image<U: core::alloc::Allocator>(&mut self, img_buf: &Vec<u8, U>) {
-        for grayscale in [4] {
+        for grayscale in [10] {
             let mut pos: usize = 0;
             self.start_frame();
             for _line in 0..HEIGHT {
                 let mut buf: [u8; WIDTH/4] = [0u8; WIDTH/4];
                 for i in 0..(WIDTH/4) {
-                    let mut b: u8 = 0b10101010; // white
-                    if (img_buf[pos] >> 4) > grayscale { b ^= 0b11000000 };//reverse => black 
-                    if (img_buf[pos] & 0x0f) > grayscale { b ^= 0b00110000 };
+                    //let mut b: u8 = 0b10101010; // white
+                    let mut b: u8 = 0b11111111; // not change
+                    if (img_buf[pos] >> 4) > grayscale { b ^= 0b10000000 };// => black (11 xor 10 = 01)
+                    if (img_buf[pos] & 0x0f) > grayscale { b ^= 0b00100000 };
                     pos += 1;
-                    if (img_buf[pos] >> 4) > grayscale { b ^= 0b00001100 };
-                    if (img_buf[pos] & 0x0f) > grayscale { b ^= 0b00000011 };
+                    if (img_buf[pos] >> 4) > grayscale { b ^= 0b00001000 };
+                    if (img_buf[pos] & 0x0f) > grayscale { b ^= 0b00000010 };
                     pos += 1;
                     buf[i] = b;
                 }
