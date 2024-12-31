@@ -882,7 +882,7 @@ fn main() -> ! {
     let mut cur_child_dir = root_dir.open_dir(dir_name.as_str()).unwrap();
 
     cur_child_dir
-        .iterate_dir(|entry| {
+        .iterate_dir(|_entry| {
             cur_dir_files_len += 1;
         })
         .unwrap();
@@ -989,14 +989,14 @@ fn main() -> ! {
                 break 'inner;
             }
             if center_pin_value > TOUCH_CENTER_THRESHOLD {
-                let indicator_pos_current: u32 =
+                let bottom_indicator_pos_current: u32 =
                     HEIGHT as u32 - ((cur_page as u32 * HEIGHT as u32) / cur_dir_files_len as u32);
-                eink_display.write_bottom_indicator(true, indicator_pos_current, 0);
-                let mut pre_status_var = indicator_pos_current;
+                eink_display.write_bottom_indicator(true, bottom_indicator_pos_current, 0);
+                let mut bottom_pre_status_var = bottom_indicator_pos_current;
 
                 delay.delay(500.millis());
 
-                'page_indicator: loop {
+                '_page_indicator: loop {
                     touch_out.set_high();
                     delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
                     touch_out.set_low();
@@ -1015,6 +1015,12 @@ fn main() -> ! {
                     delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
                     adc1.read_blocking(&mut touch_center); // first read ignore
                     let center_pin_value = adc1.read_blocking(&mut touch_center);
+                    touch_out.set_high();
+                    delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
+                    touch_out.set_low();
+                    delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
+                    adc1.read_blocking(&mut touch_top); // first read ignore
+                    let top_left_pin_value = adc1.read_blocking(&mut touch_top);
 
                     const SKIP_PAGE: u16 = 5;
                     if left_pin_value > TOUCH_LEFT_THRESHOLD {
@@ -1023,14 +1029,14 @@ fn main() -> ! {
                         } else {
                             cur_page = cur_page - SKIP_PAGE;
                         }
-                        let indicator_pos_current: u32 = HEIGHT as u32
+                        let bottom_indicator_pos_current: u32 = HEIGHT as u32
                             - ((cur_page as u32 * HEIGHT as u32) / cur_dir_files_len as u32);
                         eink_display.write_bottom_indicator(
                             false,
-                            indicator_pos_current,
-                            pre_status_var,
+                            bottom_indicator_pos_current,
+                            bottom_pre_status_var,
                         );
-                        pre_status_var = indicator_pos_current;
+                        bottom_pre_status_var = bottom_indicator_pos_current;
                     }
                     if right_pin_value > TOUCH_RIGHT_THRESHOLD {
                         if cur_page > cur_dir_files_len - SKIP_PAGE {
@@ -1038,17 +1044,106 @@ fn main() -> ! {
                         } else {
                             cur_page = cur_page + SKIP_PAGE;
                         }
-                        let indicator_pos_current: u32 = HEIGHT as u32
+                        let bottom_indicator_pos_current: u32 = HEIGHT as u32
                             - ((cur_page as u32 * HEIGHT as u32) / cur_dir_files_len as u32);
                         eink_display.write_bottom_indicator(
                             false,
-                            indicator_pos_current,
-                            pre_status_var,
+                            bottom_indicator_pos_current,
+                            bottom_pre_status_var,
                         );
-                        pre_status_var = indicator_pos_current;
+                        bottom_pre_status_var = bottom_indicator_pos_current;
                     }
                     if center_pin_value > TOUCH_CENTER_THRESHOLD {
                         break 'inner;
+                    }
+
+                    if top_left_pin_value > TOUCH_TOP_THRESHOLD {
+                        let top_indicator_pos_current: u32 = HEIGHT as u32
+                            - ((cur_dir as u32 * HEIGHT as u32) / root_dir_directories_len as u32);
+                        eink_display.write_top_indicator(true, top_indicator_pos_current, 0);
+                        let mut top_pre_status_var = top_indicator_pos_current;
+
+                        delay.delay(500.millis());
+                        'chaptor_indicator: loop {
+                            touch_out.set_high();
+                            delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
+                            touch_out.set_low();
+                            delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
+                            adc1.read_blocking(&mut touch_left); // first read ignore
+                            let left_pin_value = adc1.read_blocking(&mut touch_left);
+                            touch_out.set_high();
+                            delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
+                            touch_out.set_low();
+                            delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
+                            adc1.read_blocking(&mut touch_right); // first read ignore
+                            let right_pin_value = adc1.read_blocking(&mut touch_right);
+                            touch_out.set_high();
+                            delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
+                            touch_out.set_low();
+                            delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
+                            adc1.read_blocking(&mut touch_center); // first read ignore
+                            let center_pin_value = adc1.read_blocking(&mut touch_center);
+                            touch_out.set_high();
+                            delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
+                            touch_out.set_low();
+                            delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
+                            adc1.read_blocking(&mut touch_top); // first read ignore
+                            let top_left_pin_value = adc1.read_blocking(&mut touch_top);
+
+                            if left_pin_value > TOUCH_LEFT_THRESHOLD {
+                                if cur_dir == 0 {
+                                    cur_dir = cur_dir_files_len; //circling
+                                } else {
+                                    cur_dir = cur_dir - 1;
+                                }
+                                let top_indicator_pos_current: u32 = HEIGHT as u32
+                                    - ((cur_dir as u32 * HEIGHT as u32)
+                                        / root_dir_directories_len as u32);
+                                eink_display.write_top_indicator(
+                                    false,
+                                    top_indicator_pos_current,
+                                    top_pre_status_var,
+                                );
+                                top_pre_status_var = top_indicator_pos_current;
+                            }
+                            if right_pin_value > TOUCH_RIGHT_THRESHOLD {
+                                if cur_dir == cur_dir_files_len {
+                                    cur_dir = 0; //circling
+                                } else {
+                                    cur_dir = cur_dir + 1;
+                                }
+                                let top_indicator_pos_current: u32 = HEIGHT as u32
+                                    - ((cur_dir as u32 * HEIGHT as u32)
+                                        / root_dir_directories_len as u32);
+                                eink_display.write_top_indicator(
+                                    false,
+                                    top_indicator_pos_current,
+                                    top_pre_status_var,
+                                );
+                                top_pre_status_var = top_indicator_pos_current;
+                            }
+                            if center_pin_value > TOUCH_CENTER_THRESHOLD {
+                                write!(&mut dir_name, "{0: >04}", cur_dir).unwrap();
+                                cur_child_dir.close().unwrap();
+                                cur_child_dir = root_dir.open_dir(dir_name.as_str()).unwrap();
+
+                                cur_child_dir
+                                    .iterate_dir(|_entry| {
+                                        cur_dir_files_len += 1;
+                                    })
+                                    .unwrap();
+                                cur_dir_files_len = if cur_dir_files_len > 999 {
+                                    999
+                                } else {
+                                    cur_dir_files_len
+                                };
+
+                                break 'inner;
+                            }
+                            if top_left_pin_value > TOUCH_TOP_THRESHOLD {
+                                break 'chaptor_indicator;
+                            }
+                        }
                     }
                 }
             }
