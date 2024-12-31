@@ -876,6 +876,7 @@ fn main() -> ! {
             cur_dir_files_len += 1;
         })
         .unwrap();
+    cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
     cur_dir_files_len = if cur_dir_files_len > 999 {
         999
     } else {
@@ -979,6 +980,7 @@ fn main() -> ! {
                             cur_dir_files_len += 1;
                         })
                         .unwrap();
+                    cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
                     cur_dir_files_len = if cur_dir_files_len > 999 {
                         999
                     } else {
@@ -1009,6 +1011,7 @@ fn main() -> ! {
                             cur_dir_files_len += 1;
                         })
                         .unwrap();
+                    cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
                     cur_dir_files_len = if cur_dir_files_len > 999 {
                         999
                     } else {
@@ -1167,6 +1170,7 @@ fn main() -> ! {
                                         cur_dir_files_len += 1;
                                     })
                                     .unwrap();
+                                cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
                                 cur_dir_files_len = if cur_dir_files_len > 999 {
                                     999
                                 } else {
