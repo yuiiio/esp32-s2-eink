@@ -322,23 +322,13 @@ impl EinkDisplay {
             for line in 0..HEIGHT {
                 self.xstl.set_low();
                 if first_commit {
-                    //black
-                    let four_pixels: u8 = 0b01010101;
-                    unsafe {
-                        asm!("wur.gpio_out {0}", in(reg) four_pixels);
-                    }
-                    for _i in 0..SPLIT_WIDTH {
-                        // draw split bar
-                        self.xcl.set_high();
-                        self.xcl.set_low();
-                    }
                     if status_var.abs_diff(line as u32) <= BAR_WIDTH {
                         //black button
                         let four_pixels: u8 = 0b01010101;
                         unsafe {
                             asm!("wur.gpio_out {0}", in(reg) four_pixels);
                         }
-                        for _i in SPLIT_WIDTH..TOP_INDICATOR_WIDTH_DIV_4 {
+                        for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
                             // draw bar
                             self.xcl.set_high();
                             self.xcl.set_low();
@@ -349,11 +339,21 @@ impl EinkDisplay {
                         unsafe {
                             asm!("wur.gpio_out {0}", in(reg) four_pixels);
                         }
-                        for _i in SPLIT_WIDTH..TOP_INDICATOR_WIDTH_DIV_4 {
+                        for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
                             // draw bar
                             self.xcl.set_high();
                             self.xcl.set_low();
                         }
+                    }
+                    //black
+                    let four_pixels: u8 = 0b01010101;
+                    unsafe {
+                        asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                    }
+                    for _i in 0..SPLIT_WIDTH {
+                        // draw split bar
+                        self.xcl.set_high();
+                        self.xcl.set_low();
                     }
                 } else {
                     // none
@@ -973,7 +973,29 @@ fn main() -> ! {
 
             if left_pin_value > TOUCH_LEFT_THRESHOLD {
                 if cur_page == 0 {
-                    //i = cur_dir_files_len - 1;
+                    if cur_dir == 1 {
+                        cur_dir = root_dir_directories_len; // circling
+                    } else {
+                        cur_dir -= 1;
+                    }
+                    dir_name.clear();
+                    write!(&mut dir_name, "{0: >04}", cur_dir).unwrap();
+                    cur_child_dir.close().unwrap();
+                    cur_child_dir = root_dir.open_dir(dir_name.as_str()).unwrap();
+
+                    cur_dir_files_len = 0;
+                    cur_child_dir
+                        .iterate_dir(|_entry| {
+                            cur_dir_files_len += 1;
+                        })
+                        .unwrap();
+                    cur_dir_files_len = if cur_dir_files_len > 999 {
+                        999
+                    } else {
+                        cur_dir_files_len
+                    };
+
+                    cur_page = cur_dir_files_len - 1;
                 } else {
                     cur_page = cur_page - 1;
                 }
@@ -981,7 +1003,28 @@ fn main() -> ! {
             }
             if right_pin_value > TOUCH_RIGHT_THRESHOLD {
                 if cur_page == (cur_dir_files_len - 1) {
-                    // TODO next chaptor(change cur_dir(circling))
+                    if cur_dir == root_dir_directories_len {
+                        cur_dir = 1; // circling
+                    } else {
+                        cur_dir += 1;
+                    }
+                    dir_name.clear();
+                    write!(&mut dir_name, "{0: >04}", cur_dir).unwrap();
+                    cur_child_dir.close().unwrap();
+                    cur_child_dir = root_dir.open_dir(dir_name.as_str()).unwrap();
+
+                    cur_dir_files_len = 0;
+                    cur_child_dir
+                        .iterate_dir(|_entry| {
+                            cur_dir_files_len += 1;
+                        })
+                        .unwrap();
+                    cur_dir_files_len = if cur_dir_files_len > 999 {
+                        999
+                    } else {
+                        cur_dir_files_len
+                    };
+
                     cur_page = 0;
                 } else {
                     cur_page = cur_page + 1;
@@ -1022,7 +1065,7 @@ fn main() -> ! {
                     adc1.read_blocking(&mut touch_top); // first read ignore
                     let top_left_pin_value = adc1.read_blocking(&mut touch_top);
 
-                    const SKIP_PAGE: u16 = 5;
+                    const SKIP_PAGE: u16 = 1;
                     if left_pin_value > TOUCH_LEFT_THRESHOLD {
                         if cur_page < SKIP_PAGE {
                             cur_page = cur_dir_files_len - 1; //circling
