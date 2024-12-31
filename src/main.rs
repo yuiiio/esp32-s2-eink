@@ -649,7 +649,6 @@ fn main() -> ! {
         .device_class(USB_CLASS_CDC)
         .build();
 
-    /*
     /* debug */
     'outer: loop {
         if !usb_dev.poll(&mut [&mut serial.0]) {
@@ -688,7 +687,6 @@ fn main() -> ! {
     }
 
     writeln!(serial, "\nSuccess serialWrapper test\n").unwrap();
-    */
 
     /* flash rom */
     let mut bytes = [0u8; 4];
@@ -886,6 +884,14 @@ fn main() -> ! {
     } else {
         last_opend_page_num
     };
+
+    loop {
+        if usb_dev.poll(&mut [&mut serial.0]) {
+            break;
+        }
+    }
+    writeln!(serial, "cur_dir is {}\n", dir_name).unwrap();
+    writeln!(serial, "cur_dir_files_len is {}\n", cur_dir_files_len).unwrap();
 
     /*self cpu impl touch pad*/
     let mut touch_out = AnyOutput::new(io.pins.gpio1, Level::Low);
