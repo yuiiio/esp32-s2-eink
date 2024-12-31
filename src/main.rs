@@ -356,16 +356,6 @@ impl EinkDisplay {
                         self.xcl.set_low();
                     }
                 } else {
-                    // none
-                    let four_pixels: u8 = 0b00000000;
-                    unsafe {
-                        asm!("wur.gpio_out {0}", in(reg) four_pixels);
-                    }
-                    for _i in 0..SPLIT_WIDTH {
-                        // skip split bar
-                        self.xcl.set_high();
-                        self.xcl.set_low();
-                    }
                     if status_var.abs_diff(line as u32) <= BAR_WIDTH {
                         if pre_status_var.abs_diff(line as u32) > BAR_WIDTH {
                             //black button
@@ -373,7 +363,7 @@ impl EinkDisplay {
                             unsafe {
                                 asm!("wur.gpio_out {0}", in(reg) four_pixels);
                             }
-                            for _i in SPLIT_WIDTH..TOP_INDICATOR_WIDTH_DIV_4 {
+                            for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
                                 // draw bar
                                 self.xcl.set_high();
                                 self.xcl.set_low();
@@ -384,7 +374,7 @@ impl EinkDisplay {
                             unsafe {
                                 asm!("wur.gpio_out {0}", in(reg) four_pixels);
                             }
-                            for _i in SPLIT_WIDTH..TOP_INDICATOR_WIDTH_DIV_4 {
+                            for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
                                 // draw bar
                                 self.xcl.set_high();
                                 self.xcl.set_low();
@@ -397,7 +387,7 @@ impl EinkDisplay {
                             unsafe {
                                 asm!("wur.gpio_out {0}", in(reg) four_pixels);
                             }
-                            for _i in SPLIT_WIDTH..TOP_INDICATOR_WIDTH_DIV_4 {
+                            for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
                                 // clear pre bar
                                 self.xcl.set_high();
                                 self.xcl.set_low();
@@ -408,7 +398,7 @@ impl EinkDisplay {
                             unsafe {
                                 asm!("wur.gpio_out {0}", in(reg) four_pixels);
                             }
-                            for _i in SPLIT_WIDTH..TOP_INDICATOR_WIDTH_DIV_4 {
+                            for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
                                 // draw bar
                                 self.xcl.set_high();
                                 self.xcl.set_low();
