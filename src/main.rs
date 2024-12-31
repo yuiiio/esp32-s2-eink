@@ -1123,6 +1123,7 @@ fn main() -> ! {
                                 top_pre_status_var = top_indicator_pos_current;
                             }
                             if center_pin_value > TOUCH_CENTER_THRESHOLD {
+                                dir_name.clear();
                                 write!(&mut dir_name, "{0: >04}", cur_dir).unwrap();
                                 cur_child_dir.close().unwrap();
                                 cur_child_dir = root_dir.open_dir(dir_name.as_str()).unwrap();
@@ -1138,6 +1139,7 @@ fn main() -> ! {
                                     cur_dir_files_len
                                 };
 
+                                cur_page = 0;
                                 break 'inner;
                             }
                             if top_left_pin_value > TOUCH_TOP_THRESHOLD {
