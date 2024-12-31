@@ -973,14 +973,14 @@ fn main() -> ! {
 
             if left_pin_value > TOUCH_LEFT_THRESHOLD {
                 if cur_page == 0 {
-                    //i = root_dir_files;
+                    //i = cur_dir_files_len - 1;
                 } else {
                     cur_page = cur_page - 1;
                 }
                 break 'inner;
             }
             if right_pin_value > TOUCH_RIGHT_THRESHOLD {
-                if cur_page == cur_dir_files_len {
+                if cur_page == (cur_dir_files_len - 1) {
                     // TODO next chaptor(change cur_dir(circling))
                     cur_page = 0;
                 } else {
@@ -1025,7 +1025,7 @@ fn main() -> ! {
                     const SKIP_PAGE: u16 = 5;
                     if left_pin_value > TOUCH_LEFT_THRESHOLD {
                         if cur_page < SKIP_PAGE {
-                            cur_page = cur_dir_files_len; //circling
+                            cur_page = cur_dir_files_len - 1; //circling
                         } else {
                             cur_page = cur_page - SKIP_PAGE;
                         }
@@ -1039,7 +1039,7 @@ fn main() -> ! {
                         bottom_pre_status_var = bottom_indicator_pos_current;
                     }
                     if right_pin_value > TOUCH_RIGHT_THRESHOLD {
-                        if cur_page > cur_dir_files_len - SKIP_PAGE {
+                        if cur_page > (cur_dir_files_len - 1) - SKIP_PAGE {
                             cur_page = 0; //circling
                         } else {
                             cur_page = cur_page + SKIP_PAGE;
@@ -1128,6 +1128,7 @@ fn main() -> ! {
                                 cur_child_dir.close().unwrap();
                                 cur_child_dir = root_dir.open_dir(dir_name.as_str()).unwrap();
 
+                                cur_dir_files_len = 0;
                                 cur_child_dir
                                     .iterate_dir(|_entry| {
                                         cur_dir_files_len += 1;
