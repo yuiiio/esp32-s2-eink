@@ -312,6 +312,148 @@ impl EinkDisplay {
         }
     }
     #[inline(always)]
+    fn write_top_indicator(&mut self, first_commit: bool, status_var: u32, pre_status_var: u32) {
+        // partial update
+        const TOP_INDICATOR_WIDTH_DIV_4: usize = 100 / 4;
+        const SPLIT_WIDTH: usize = 4 / 4;
+        const BAR_WIDTH: u32 = 20;
+        for _cycle in 0..1 {
+            self.start_frame();
+            for line in 0..HEIGHT {
+                self.xstl.set_low();
+                if first_commit {
+                    //black
+                    let four_pixels: u8 = 0b01010101;
+                    unsafe {
+                        asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                    }
+                    for _i in 0..SPLIT_WIDTH {
+                        // draw split bar
+                        self.xcl.set_high();
+                        self.xcl.set_low();
+                    }
+                    if status_var.abs_diff(line as u32) <= BAR_WIDTH {
+                        //black button
+                        let four_pixels: u8 = 0b01010101;
+                        unsafe {
+                            asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                        }
+                        for _i in SPLIT_WIDTH..TOP_INDICATOR_WIDTH_DIV_4 {
+                            // draw bar
+                            self.xcl.set_high();
+                            self.xcl.set_low();
+                        }
+                    } else {
+                        //white backgruond
+                        let four_pixels: u8 = 0b10101010;
+                        unsafe {
+                            asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                        }
+                        for _i in SPLIT_WIDTH..TOP_INDICATOR_WIDTH_DIV_4 {
+                            // draw bar
+                            self.xcl.set_high();
+                            self.xcl.set_low();
+                        }
+                    }
+                } else {
+                    // none
+                    let four_pixels: u8 = 0b00000000;
+                    unsafe {
+                        asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                    }
+                    for _i in 0..SPLIT_WIDTH {
+                        // skip split bar
+                        self.xcl.set_high();
+                        self.xcl.set_low();
+                    }
+                    if status_var.abs_diff(line as u32) <= BAR_WIDTH {
+                        if pre_status_var.abs_diff(line as u32) > BAR_WIDTH {
+                            //black button
+                            let four_pixels: u8 = 0b01010101;
+                            unsafe {
+                                asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                            }
+                            for _i in SPLIT_WIDTH..TOP_INDICATOR_WIDTH_DIV_4 {
+                                // draw bar
+                                self.xcl.set_high();
+                                self.xcl.set_low();
+                            }
+                        } else {
+                            //none
+                            let four_pixels: u8 = 0b00000000;
+                            unsafe {
+                                asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                            }
+                            for _i in SPLIT_WIDTH..TOP_INDICATOR_WIDTH_DIV_4 {
+                                // draw bar
+                                self.xcl.set_high();
+                                self.xcl.set_low();
+                            }
+                        }
+                    } else {
+                        if pre_status_var.abs_diff(line as u32) <= BAR_WIDTH {
+                            //white background
+                            let four_pixels: u8 = 0b10101010;
+                            unsafe {
+                                asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                            }
+                            for _i in SPLIT_WIDTH..TOP_INDICATOR_WIDTH_DIV_4 {
+                                // clear pre bar
+                                self.xcl.set_high();
+                                self.xcl.set_low();
+                            }
+                        } else {
+                            //none
+                            let four_pixels: u8 = 0b00000000;
+                            unsafe {
+                                asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                            }
+                            for _i in SPLIT_WIDTH..TOP_INDICATOR_WIDTH_DIV_4 {
+                                // draw bar
+                                self.xcl.set_high();
+                                self.xcl.set_low();
+                            }
+                        }
+                    }
+                }
+                // none
+                let four_pixels: u8 = 0b00000000;
+                unsafe {
+                    asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                }
+                /* can write 4 pixel for onece */
+                for _i in 0..((WIDTH / 4) - TOP_INDICATOR_WIDTH_DIV_4) {
+                    //skip not changed area
+                    self.xcl.set_high();
+                    self.xcl.set_low();
+                }
+
+                self.xstl.set_high();
+                self.xcl.set_high();
+                self.xcl.set_low();
+
+                self.xle.set_high();
+                self.xle.set_low();
+
+                self.ckv.set_low();
+                //self.delay.delay(1.micros());
+                unsafe {
+                    asm!("nop");
+                    asm!("nop");
+                    asm!("nop");
+                    asm!("nop");
+
+                    asm!("nop");
+                    asm!("nop");
+                    asm!("nop");
+                    asm!("nop");
+                }
+                self.ckv.set_high();
+            }
+            self.end_frame();
+        }
+    }
+    #[inline(always)]
     fn write_bottom_indicator(&mut self, first_commit: bool, status_var: u32, pre_status_var: u32) {
         // partial update
         const BOTTOM_INDICATOR_WIDTH_DIV_4: usize = 100 / 4;
