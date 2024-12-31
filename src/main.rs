@@ -1091,7 +1091,7 @@ fn main() -> ! {
                             let top_left_pin_value = adc1.read_blocking(&mut touch_top);
 
                             if left_pin_value > TOUCH_LEFT_THRESHOLD {
-                                if cur_dir == 0 {
+                                if cur_dir == 1 {
                                     cur_dir = cur_dir_files_len; //circling
                                 } else {
                                     cur_dir = cur_dir - 1;
@@ -1108,7 +1108,7 @@ fn main() -> ! {
                             }
                             if right_pin_value > TOUCH_RIGHT_THRESHOLD {
                                 if cur_dir == cur_dir_files_len {
-                                    cur_dir = 0; //circling
+                                    cur_dir = 1; //circling
                                 } else {
                                     cur_dir = cur_dir + 1;
                                 }
