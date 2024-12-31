@@ -1128,7 +1128,7 @@ fn main() -> ! {
 
                             if left_pin_value > TOUCH_LEFT_THRESHOLD {
                                 if cur_dir == 1 {
-                                    cur_dir = cur_dir_files_len; //circling
+                                    cur_dir = root_dir_directories_len; //circling
                                 } else {
                                     cur_dir = cur_dir - 1;
                                 }
@@ -1143,7 +1143,7 @@ fn main() -> ! {
                                 top_pre_status_var = top_indicator_pos_current;
                             }
                             if right_pin_value > TOUCH_RIGHT_THRESHOLD {
-                                if cur_dir == cur_dir_files_len {
+                                if cur_dir == root_dir_directories_len {
                                     cur_dir = 1; //circling
                                 } else {
                                     cur_dir = cur_dir + 1;
@@ -1180,9 +1180,11 @@ fn main() -> ! {
                                 cur_page = 0;
                                 break 'inner;
                             }
+                            /* need pending cur_dir maybe
                             if top_left_pin_value > TOUCH_TOP_THRESHOLD {
                                 break 'chaptor_indicator;
                             }
+                            */
                         }
                     }
                 }
