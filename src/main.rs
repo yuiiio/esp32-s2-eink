@@ -946,25 +946,25 @@ fn main() -> ! {
             touch_out.set_low();
             delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
             adc1.read_blocking(&mut touch_left); // first read ignore
-            let mut left_pin_value = adc1.read_blocking(&mut touch_left);
+            let left_pin_value = adc1.read_blocking(&mut touch_left);
             touch_out.set_high();
             delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
             touch_out.set_low();
             delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
             adc1.read_blocking(&mut touch_right); // first read ignore
-            let mut right_pin_value = adc1.read_blocking(&mut touch_right);
+            let right_pin_value = adc1.read_blocking(&mut touch_right);
             touch_out.set_high();
             delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
             touch_out.set_low();
             delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
             adc1.read_blocking(&mut touch_center); // first read ignore
-            let mut center_pin_value = adc1.read_blocking(&mut touch_center);
+            let center_pin_value = adc1.read_blocking(&mut touch_center);
             touch_out.set_high();
             delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
             touch_out.set_low();
             delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
             adc1.read_blocking(&mut touch_top); // first read ignore
-            let mut top_left_pin_value = adc1.read_blocking(&mut touch_top);
+            let top_left_pin_value = adc1.read_blocking(&mut touch_top);
 
             if top_left_pin_value > TOUCH_TOP_THRESHOLD {
                 eink_display.write_all_white();
@@ -989,33 +989,32 @@ fn main() -> ! {
                 break 'inner;
             }
             if center_pin_value > TOUCH_CENTER_THRESHOLD {
-                let mut pre_status_var: u32 = 0;
                 let indicator_pos_current: u32 =
                     HEIGHT as u32 - ((cur_page as u32 * HEIGHT as u32) / cur_dir_files_len as u32);
                 eink_display.write_bottom_indicator(true, indicator_pos_current, 0);
-                pre_status_var = indicator_pos_current;
+                let mut pre_status_var = indicator_pos_current;
 
                 delay.delay(500.millis());
 
-                'indicator: loop {
+                'page_indicator: loop {
                     touch_out.set_high();
                     delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
                     touch_out.set_low();
                     delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
                     adc1.read_blocking(&mut touch_left); // first read ignore
-                    let mut left_pin_value = adc1.read_blocking(&mut touch_left);
+                    let left_pin_value = adc1.read_blocking(&mut touch_left);
                     touch_out.set_high();
                     delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
                     touch_out.set_low();
                     delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
                     adc1.read_blocking(&mut touch_right); // first read ignore
-                    let mut right_pin_value = adc1.read_blocking(&mut touch_right);
+                    let right_pin_value = adc1.read_blocking(&mut touch_right);
                     touch_out.set_high();
                     delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
                     touch_out.set_low();
                     delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
                     adc1.read_blocking(&mut touch_center); // first read ignore
-                    let mut center_pin_value = adc1.read_blocking(&mut touch_center);
+                    let center_pin_value = adc1.read_blocking(&mut touch_center);
 
                     const SKIP_PAGE: u16 = 5;
                     if left_pin_value > TOUCH_LEFT_THRESHOLD {
