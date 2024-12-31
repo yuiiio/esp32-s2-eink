@@ -530,7 +530,8 @@ fn main() -> ! {
             Ok(count) if count > 0 => {
                 // Echo back in upper case
                 for c in buf[0..count].iter_mut() {
-                    if *c == 0x63 { // c
+                    if *c == 0x63 {
+                        // c
                         break 'outer;
                     }
                     if 0x61 <= *c && *c <= 0x7a {
@@ -545,7 +546,7 @@ fn main() -> ! {
                             if len > 0 {
                                 write_offset += len;
                             }
-                        },
+                        }
                         _ => {}
                     }
                 }
@@ -725,7 +726,16 @@ fn main() -> ! {
         }
     };
 
-    write!(&mut dir_name, "{0: >04}.tif", cur_dir).unwrap();
+    /*
+    loop {
+        if usb_dev.poll(&mut [&mut serial.0]) {
+            break;
+        }
+    }
+    writeln!(serial, "cur_dir is {}\n", cur_dir).unwrap();
+    */
+
+    write!(&mut dir_name, "{0: >04}", cur_dir).unwrap();
     let mut cur_dir_files_len: u16 = 0;
     let mut cur_child_dir = root_dir.open_dir(dir_name.as_str()).unwrap();
 
