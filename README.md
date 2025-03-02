@@ -1,6 +1,6 @@
 # for Debug
 
-wr_mask_gpio_out, set_bit_gpio_out, clr_bit_gpio_out, get_gpio_in 
+wr_mask_gpio_out, set_bit_gpio_out, clr_bit_gpio_out, get_gpio_in
 
 esp32s2 specific instructions disassemble needs xtensa-esp32s2-elf-clang-objdump
 
@@ -13,7 +13,7 @@ PSRAM fails to init when using espflash ver 1.7.0 :(
 
 but espflash latest 3.0.1 fails connect to esp32s2 other reason... :(
 
-espflash @2.0.1 works success connect and works psram correct :)
+espflash @2.1.0 works success connect and works psram correct :)
 
 # SdCard (embedded-sdmmc-rs)
 supports MBR FAT32 and **need [W95 FAT32] type(0x0c)**
