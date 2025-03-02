@@ -38,11 +38,13 @@ use embedded_sdmmc::{
     VolumeManager,
 };
 
-static PSRAM_ALLOCATOR: esp_alloc::EspHeap = esp_alloc::EspHeap::empty();
+//static PSRAM_ALLOCATOR: esp_alloc::EspHeap = esp_alloc::EspHeap::empty();
+// seems conflicts with global allocator maybe current esp-hal issue.
 
 fn init_psram_heap(start: *mut u8, size: usize) {
     unsafe {
-        PSRAM_ALLOCATOR.add_region(esp_alloc::HeapRegion::new(
+        //PSRAM_ALLOCATOR.add_region(esp_alloc::HeapRegion::new(
+        esp_alloc::HEAP.add_region(esp_alloc::HeapRegion::new(
             start,
             size,
             esp_alloc::MemoryCapability::Internal.into(), // External ?
@@ -753,7 +755,7 @@ fn main() -> ! {
 
     let mut volume_manager = VolumeManager::new(sdcard, FakeTimesource {});
 
-    let mut img_buf: Vec<u8, _> = Vec::with_capacity_in(FOUR_BPP_BUF_SIZE, &PSRAM_ALLOCATOR);
+    let mut img_buf: Vec<u8, _> = Vec::with_capacity_in(FOUR_BPP_BUF_SIZE, &esp_alloc::HEAP);
     for _i in 0..FOUR_BPP_BUF_SIZE {
         img_buf.push(0u8);
     }
