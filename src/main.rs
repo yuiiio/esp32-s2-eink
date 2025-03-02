@@ -20,7 +20,7 @@ use esp_hal::{
     gpio::{Io, Level, Output, OutputConfig},
     main,
     otg_fs::{Usb, UsbBus},
-    peripherals::{DEDICATED_GPIO, GPIO, IO_MUX},
+    peripherals::{DEDICATED_GPIO, GPIO, IO_MUX, SYSTEM},
     psram,
     spi::master::Spi,
     time::Rate,
@@ -38,7 +38,6 @@ use embedded_sdmmc::{
     VolumeManager,
 };
 
-#[global_allocator]
 static PSRAM_ALLOCATOR: esp_alloc::EspHeap = esp_alloc::EspHeap::empty();
 
 fn init_psram_heap(start: *mut u8, size: usize) {
@@ -620,22 +619,18 @@ fn main() -> ! {
     init_psram_heap(start, size);
 
     /* enable dedicated gpio peripheral */
-    peripherals
-        .SYSTEM
+    SYSTEM::regs()
         .cpu_peri_clk_en()
         .modify(|_, w| w.clk_en_dedicated_gpio().bit(true));
-    peripherals
-        .SYSTEM
+    SYSTEM::regs()
         .cpu_peri_rst_en()
         .modify(|_, w| w.rst_en_dedicated_gpio().bit(true));
-    peripherals
-        .SYSTEM
+    SYSTEM::regs()
         .cpu_peri_rst_en()
         .modify(|_, w| w.rst_en_dedicated_gpio().bit(false));
 
     let delay = Delay::new();
 
-    let io = Io::new(peripherals.IO_MUX);
     let mut led = Output::new(peripherals.GPIO15, Level::High, OutputConfig::default());
 
     /*usb serial debug*/
