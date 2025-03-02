@@ -11,9 +11,11 @@ espup install --toolchain-version 1.79.0.0 -e (# -e for --extended-llvm)
 # PSRAM
 PSRAM fails to init when using espflash ver 1.7.0 :(
 
-but espflash latest 3.0.1 fails connect to esp32s2 other reason... :(
+~but espflash latest 3.0.1 fails connect to esp32s2 other reason... :(~
 
 espflash @2.1.0 works success connect and works psram correct :)
+
+espflash@3.3.0 works with --before no-reset --no-stub
 
 # SdCard (embedded-sdmmc-rs)
 supports MBR FAT32 and **need [W95 FAT32] type(0x0c)**
