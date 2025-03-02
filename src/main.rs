@@ -18,8 +18,10 @@ use esp_hal::{
     analog::adc::{Adc, AdcConfig, Attenuation},
     delay::Delay,
     gpio::{Io, Level, Output, OutputConfig},
+    main,
     otg_fs::{Usb, UsbBus},
     peripherals::{DEDICATED_GPIO, GPIO, IO_MUX},
+    psram,
     spi::master::Spi,
     time::Rate,
 };
@@ -30,19 +32,22 @@ use usbd_serial::{SerialPort, USB_CLASS_CDC};
 use embedded_storage::{ReadStorage, Storage};
 use esp_storage::FlashStorage;
 
-use embedded_hal::delay::DelayNs;
 use embedded_hal_bus::spi::ExclusiveDevice;
 use embedded_sdmmc::{
-    sdcard::{DummyCsPin, SdCard},
-    BlockDevice, Directory, Error, Mode, SdCardError, ShortFileName, VolumeIdx, VolumeManager,
+    sdcard::SdCard, BlockDevice, Directory, Error, Mode, SdCardError, ShortFileName, VolumeIdx,
+    VolumeManager,
 };
 
 #[global_allocator]
 static PSRAM_ALLOCATOR: esp_alloc::EspHeap = esp_alloc::EspHeap::empty();
 
-fn init_psram_heap() {
+fn init_psram_heap(start: *mut u8, size: usize) {
     unsafe {
-        PSRAM_ALLOCATOR.init(psram::psram_vaddr_start() as *mut u8, psram::PSRAM_BYTES);
+        PSRAM_ALLOCATOR.add_region(esp_alloc::HeapRegion::new(
+            start,
+            size,
+            esp_alloc::MemoryCapability::Internal.into(), // External ?
+        ));
     }
 }
 
@@ -608,11 +613,11 @@ where
     Ok(())
 }
 
-#[entry]
+#[main]
 fn main() -> ! {
     let peripherals = esp_hal::init(esp_hal::Config::default());
-    psram::init_psram(peripherals.PSRAM);
-    init_psram_heap();
+    let (start, size) = psram::psram_raw_parts(&peripherals.PSRAM);
+    init_psram_heap(start, size);
 
     /* enable dedicated gpio peripheral */
     peripherals
@@ -713,7 +718,8 @@ fn main() -> ! {
     .with_mosi(mosi)
     .with_miso(miso);
 
-    let spi_device = ExclusiveDevice::new_no_delay(spi, DummyCsPin).unwrap();
+    let spi_device = ExclusiveDevice::new_no_delay(spi, cs).unwrap();
+    // should DummyCsPin?
 
     let sdcard = SdCard::new(spi_device, delay);
 
@@ -888,13 +894,13 @@ fn main() -> ! {
     };
 
     /*self cpu impl touch pad*/
-    let mut touch_out = AnyOutput::new(peripherals.GPIO1, Level::Low);
+    let mut touch_out = Output::new(peripherals.GPIO1, Level::Low, OutputConfig::default());
 
     let mut adc1_config = AdcConfig::new();
-    let mut touch_left = adc1_config.enable_pin(peripherals.GPIO2, Attenuation::Attenuation11dB);
-    let mut touch_right = adc1_config.enable_pin(peripherals.GPIO3, Attenuation::Attenuation11dB);
-    let mut touch_center = adc1_config.enable_pin(peripherals.GPIO4, Attenuation::Attenuation11dB);
-    let mut touch_top = adc1_config.enable_pin(peripherals.GPIO5, Attenuation::Attenuation11dB);
+    let mut touch_left = adc1_config.enable_pin(peripherals.GPIO2, Attenuation::_11dB);
+    let mut touch_right = adc1_config.enable_pin(peripherals.GPIO3, Attenuation::_11dB);
+    let mut touch_center = adc1_config.enable_pin(peripherals.GPIO4, Attenuation::_11dB);
+    let mut touch_top = adc1_config.enable_pin(peripherals.GPIO5, Attenuation::_11dB);
     let mut adc1 = Adc::new(peripherals.ADC1, adc1_config);
 
     const TOUCH_LEFT_THRESHOLD: u16 = 5000;
@@ -1029,7 +1035,7 @@ fn main() -> ! {
                 eink_display.write_bottom_indicator(true, bottom_indicator_pos_current, 0);
                 let mut bottom_pre_status_var = bottom_indicator_pos_current;
 
-                delay.delay(500.millis());
+                delay.delay_millis(500u32);
 
                 '_page_indicator: loop {
                     touch_out.set_high();
@@ -1098,7 +1104,7 @@ fn main() -> ! {
                         eink_display.write_top_indicator(true, top_indicator_pos_current, 0);
                         let mut top_pre_status_var = top_indicator_pos_current;
 
-                        delay.delay(500.millis());
+                        delay.delay_millis(500_u32);
                         'chaptor_indicator: loop {
                             touch_out.set_high();
                             delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);

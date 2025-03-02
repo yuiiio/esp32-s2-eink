@@ -12,7 +12,7 @@ esp-backtrace = { version = "0.15.1", features = [
     "panic-handler",
     "println",
 ] }
-esp-hal = { git = "https://github.com/esp-rs/esp-hal.git", features = [ "esp32s2", "unstable" ] }
+esp-hal = { git = "https://github.com/esp-rs/esp-hal.git", features = [ "esp32s2", "unstable", "psram" ] }
 esp-println = { version = "0.13.1", features = ["esp32s2", "log"] }
 log = { version = "0.4.26" }
 embedded-sdmmc = "0.8.1"
