@@ -640,7 +640,8 @@ where
 
 #[main]
 fn main() -> ! {
-    let peripherals = esp_hal::init(esp_hal::Config::default());
+    let peripherals =
+        esp_hal::init(esp_hal::Config::default().with_cpu_clock(esp_hal::clock::CpuClock::max()));
     let (start, size) = psram::psram_raw_parts(&peripherals.PSRAM);
     init_psram_heap(start, size);
 
