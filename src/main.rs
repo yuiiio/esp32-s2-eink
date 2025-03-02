@@ -102,7 +102,7 @@ struct EinkDisplay {
     pub xle: Output<'static>,
     pub xoe: Output<'static>,
     pub xstl: Output<'static>,
-    //pub delay: Delay,
+    pub delay: Delay,
 }
 
 impl EinkDisplay {
@@ -112,17 +112,7 @@ impl EinkDisplay {
         self.mode1.set_high();
         self.spv.set_low();
         self.ckv.set_low();
-        unsafe {
-            asm!("nop");
-            asm!("nop");
-            asm!("nop");
-            asm!("nop");
-
-            asm!("nop");
-            asm!("nop");
-            asm!("nop");
-            asm!("nop");
-        }
+        self.delay.delay_micros(1);
         self.ckv.set_high();
         self.spv.set_high();
     }
@@ -159,22 +149,7 @@ impl EinkDisplay {
         self.xle.set_low();
 
         self.ckv.set_low();
-        unsafe {
-            asm!("nop");
-            asm!("nop");
-            asm!("nop");
-            asm!("nop");
-
-            asm!("nop");
-            asm!("nop");
-            asm!("nop");
-            asm!("nop");
-
-            asm!("nop");
-            asm!("nop");
-            asm!("nop");
-            asm!("nop");
-        }
+        self.delay.delay_micros(1);
         self.ckv.set_high();
     }
 
@@ -261,23 +236,7 @@ impl EinkDisplay {
                 self.xle.set_low();
 
                 self.ckv.set_low();
-                //self.delay.delay_micros(1_u32);
-                unsafe {
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-                }
+                self.delay.delay_micros(1);
                 self.ckv.set_high();
             }
             self.end_frame();
@@ -307,23 +266,7 @@ impl EinkDisplay {
                 self.xle.set_low();
 
                 self.ckv.set_low();
-                //self.delay.delay_micros(1_u32);
-                unsafe {
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-                }
+                self.delay.delay_micros(1);
                 self.ckv.set_high();
             }
             self.end_frame();
@@ -444,23 +387,7 @@ impl EinkDisplay {
                 self.xle.set_low();
 
                 self.ckv.set_low();
-                //self.delay.delay(1.micros());
-                unsafe {
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-                }
+                self.delay.delay_micros(1);
                 self.ckv.set_high();
             }
             self.end_frame();
@@ -590,23 +517,7 @@ impl EinkDisplay {
                 self.xle.set_low();
 
                 self.ckv.set_low();
-                //self.delay.delay(1.micros());
-                unsafe {
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-                    asm!("nop");
-                }
+                self.delay.delay_micros(1);
                 self.ckv.set_high();
             }
             self.end_frame();
@@ -844,7 +755,7 @@ fn main() -> ! {
         xle,
         xoe,
         xstl,
-        //delay,
+        delay,
     };
     eink_display.write_all_white();
     eink_display.write_all_black();
