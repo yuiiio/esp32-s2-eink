@@ -100,6 +100,7 @@ struct EinkDisplay {
     pub xle: Output<'static>,
     pub xoe: Output<'static>,
     pub xstl: Output<'static>,
+    //pub delay: Delay,
 }
 
 impl EinkDisplay {
@@ -166,11 +167,15 @@ impl EinkDisplay {
             asm!("nop");
             asm!("nop");
             asm!("nop");
+
+            asm!("nop");
+            asm!("nop");
+            asm!("nop");
+            asm!("nop");
         }
         self.ckv.set_high();
     }
 
-    #[inline(always)]
     fn write_4bpp_image<U: core::alloc::Allocator>(&mut self, img_buf: &Vec<u8, U>) {
         for grayscale in [5, 10] {
             let mut pos: usize = 0;
@@ -200,7 +205,7 @@ impl EinkDisplay {
             self.end_frame();
         }
     }
-    #[inline(always)]
+
     fn write_4bpp_reverse_image<U: core::alloc::Allocator>(&mut self, img_buf: &Vec<u8, U>) {
         for grayscale in 6..8 {
             let mut pos: usize = 0;
@@ -231,7 +236,6 @@ impl EinkDisplay {
         }
     }
 
-    #[inline(always)]
     fn write_all_black(&mut self) {
         for _cycle in 0..2 {
             // black
@@ -255,8 +259,13 @@ impl EinkDisplay {
                 self.xle.set_low();
 
                 self.ckv.set_low();
-                //self.delay.delay(1.micros());
+                //self.delay.delay_micros(1_u32);
                 unsafe {
+                    asm!("nop");
+                    asm!("nop");
+                    asm!("nop");
+                    asm!("nop");
+
                     asm!("nop");
                     asm!("nop");
                     asm!("nop");
@@ -272,7 +281,7 @@ impl EinkDisplay {
             self.end_frame();
         }
     }
-    #[inline(always)]
+
     fn write_all_white(&mut self) {
         for _cycle in 0..2 {
             // white
@@ -296,8 +305,13 @@ impl EinkDisplay {
                 self.xle.set_low();
 
                 self.ckv.set_low();
-                //self.delay.delay(1.micros());
+                //self.delay.delay_micros(1_u32);
                 unsafe {
+                    asm!("nop");
+                    asm!("nop");
+                    asm!("nop");
+                    asm!("nop");
+
                     asm!("nop");
                     asm!("nop");
                     asm!("nop");
@@ -313,7 +327,7 @@ impl EinkDisplay {
             self.end_frame();
         }
     }
-    #[inline(always)]
+
     fn write_top_indicator(&mut self, first_commit: bool, status_var: u32, pre_status_var: u32) {
         // partial update
         const TOP_INDICATOR_WIDTH_DIV_4: usize = 100 / 4;
@@ -439,13 +453,18 @@ impl EinkDisplay {
                     asm!("nop");
                     asm!("nop");
                     asm!("nop");
+
+                    asm!("nop");
+                    asm!("nop");
+                    asm!("nop");
+                    asm!("nop");
                 }
                 self.ckv.set_high();
             }
             self.end_frame();
         }
     }
-    #[inline(always)]
+
     fn write_bottom_indicator(&mut self, first_commit: bool, status_var: u32, pre_status_var: u32) {
         // partial update
         const BOTTOM_INDICATOR_WIDTH_DIV_4: usize = 100 / 4;
@@ -571,6 +590,11 @@ impl EinkDisplay {
                 self.ckv.set_low();
                 //self.delay.delay(1.micros());
                 unsafe {
+                    asm!("nop");
+                    asm!("nop");
+                    asm!("nop");
+                    asm!("nop");
+
                     asm!("nop");
                     asm!("nop");
                     asm!("nop");
@@ -817,6 +841,7 @@ fn main() -> ! {
         xle,
         xoe,
         xstl,
+        //delay,
     };
     eink_display.write_all_white();
     eink_display.write_all_black();
