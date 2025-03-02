@@ -47,7 +47,7 @@ fn init_psram_heap(start: *mut u8, size: usize) {
         esp_alloc::HEAP.add_region(esp_alloc::HeapRegion::new(
             start,
             size,
-            esp_alloc::MemoryCapability::Internal.into(), // External ?
+            esp_alloc::MemoryCapability::External.into(), // Internal ?
         ));
     }
 }
