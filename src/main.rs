@@ -16,15 +16,12 @@ use core::ptr::addr_of_mut;
 use esp_backtrace as _;
 use esp_hal::{
     analog::adc::{Adc, AdcConfig, Attenuation},
-    clock::ClockControl,
     delay::Delay,
-    gpio::{AnyOutput, Io, Level, Output, NO_PIN},
+    gpio::{Io, Level, Output, OutputConfig},
     otg_fs::{Usb, UsbBus},
-    peripherals::{Peripherals, DEDICATED_GPIO, GPIO, IO_MUX},
-    prelude::*,
-    psram,
-    spi::{master::Spi, SpiMode},
-    system::SystemControl,
+    peripherals::{DEDICATED_GPIO, GPIO, IO_MUX},
+    spi::master::Spi,
+    time::Rate,
 };
 
 use usb_device::prelude::{UsbDeviceBuilder, UsbVidPid};
@@ -33,6 +30,7 @@ use usbd_serial::{SerialPort, USB_CLASS_CDC};
 use embedded_storage::{ReadStorage, Storage};
 use esp_storage::FlashStorage;
 
+use embedded_hal::delay::DelayNs;
 use embedded_hal_bus::spi::ExclusiveDevice;
 use embedded_sdmmc::{
     sdcard::{DummyCsPin, SdCard},
@@ -90,14 +88,14 @@ const WIDTH: usize = 1448;
 const FOUR_BPP_BUF_SIZE: usize = WIDTH * HEIGHT * 4 / 8;
 
 struct EinkDisplay {
-    pub mode1: AnyOutput<'static>,
-    pub ckv: AnyOutput<'static>,
-    pub spv: AnyOutput<'static>,
+    pub mode1: Output<'static>,
+    pub ckv: Output<'static>,
+    pub spv: Output<'static>,
 
-    pub xcl: AnyOutput<'static>,
-    pub xle: AnyOutput<'static>,
-    pub xoe: AnyOutput<'static>,
-    pub xstl: AnyOutput<'static>,
+    pub xcl: Output<'static>,
+    pub xle: Output<'static>,
+    pub xoe: Output<'static>,
+    pub xstl: Output<'static>,
 }
 
 impl EinkDisplay {
@@ -612,7 +610,7 @@ where
 
 #[entry]
 fn main() -> ! {
-    let peripherals = Peripherals::take();
+    let peripherals = esp_hal::init(esp_hal::Config::default());
     psram::init_psram(peripherals.PSRAM);
     init_psram_heap();
 
@@ -630,16 +628,13 @@ fn main() -> ! {
         .cpu_peri_rst_en()
         .modify(|_, w| w.rst_en_dedicated_gpio().bit(false));
 
-    let system = SystemControl::new(peripherals.SYSTEM);
+    let delay = Delay::new();
 
-    let clocks = ClockControl::max(system.clock_control).freeze();
-    let delay = Delay::new(&clocks);
-
-    let io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
-    let mut led = AnyOutput::new(io.pins.gpio15, Level::High);
+    let io = Io::new(peripherals.IO_MUX);
+    let mut led = Output::new(peripherals.GPIO15, Level::High, OutputConfig::default());
 
     /*usb serial debug*/
-    let usb = Usb::new(peripherals.USB0, io.pins.gpio19, io.pins.gpio20);
+    let usb = Usb::new(peripherals.USB0, peripherals.GPIO20, peripherals.GPIO19);
     let usb_bus = UsbBus::new(usb, unsafe { &mut *addr_of_mut!(EP_MEMORY) });
 
     let serial = SerialPort::new(&usb_bus);
@@ -702,21 +697,25 @@ fn main() -> ! {
     let last_opend_dir_num: u16 = u16::from_be_bytes([bytes[0], bytes[1]]);
 
     /* sd card */
-    let sclk = io.pins.gpio36;
-    let miso = io.pins.gpio37;
-    let mosi = io.pins.gpio35;
-    let cs = Output::new(io.pins.gpio34, Level::High);
+    let sclk = peripherals.GPIO36;
+    let miso = peripherals.GPIO37;
+    let mosi = peripherals.GPIO35;
+    let cs = Output::new(peripherals.GPIO34, Level::High, OutputConfig::default());
 
-    let spi = Spi::new(peripherals.SPI2, 50u32.MHz(), SpiMode::Mode0, &clocks).with_pins(
-        Some(sclk),
-        Some(mosi),
-        Some(miso),
-        NO_PIN,
-    );
+    let spi = Spi::new(
+        peripherals.SPI2,
+        esp_hal::spi::master::Config::default()
+            .with_frequency(Rate::from_mhz(50))
+            .with_mode(esp_hal::spi::Mode::_0),
+    )
+    .unwrap()
+    .with_sck(sclk)
+    .with_mosi(mosi)
+    .with_miso(miso);
 
     let spi_device = ExclusiveDevice::new_no_delay(spi, DummyCsPin).unwrap();
 
-    let sdcard = SdCard::new(spi_device, cs, delay);
+    let sdcard = SdCard::new(spi_device, delay);
 
     /*
     loop {
@@ -800,14 +799,14 @@ fn main() -> ! {
         .gpio13()
         .modify(|_, w| unsafe { w.mcu_sel().bits(1) });
 
-    let mode1 = AnyOutput::new(io.pins.gpio11, Level::High);
-    let ckv = AnyOutput::new(io.pins.gpio14, Level::High);
-    let spv = AnyOutput::new(io.pins.gpio12, Level::High);
+    let mode1 = Output::new(peripherals.GPIO11, Level::High, OutputConfig::default());
+    let ckv = Output::new(peripherals.GPIO14, Level::High, OutputConfig::default());
+    let spv = Output::new(peripherals.GPIO12, Level::High, OutputConfig::default());
 
-    let xcl = AnyOutput::new(io.pins.gpio39, Level::High);
-    let xle = AnyOutput::new(io.pins.gpio40, Level::High);
-    let xoe = AnyOutput::new(io.pins.gpio38, Level::High);
-    let xstl = AnyOutput::new(io.pins.gpio33, Level::High);
+    let xcl = Output::new(peripherals.GPIO39, Level::High, OutputConfig::default());
+    let xle = Output::new(peripherals.GPIO40, Level::High, OutputConfig::default());
+    let xoe = Output::new(peripherals.GPIO38, Level::High, OutputConfig::default());
+    let xstl = Output::new(peripherals.GPIO33, Level::High, OutputConfig::default());
 
     let mut eink_display = EinkDisplay {
         mode1,
@@ -889,13 +888,13 @@ fn main() -> ! {
     };
 
     /*self cpu impl touch pad*/
-    let mut touch_out = AnyOutput::new(io.pins.gpio1, Level::Low);
+    let mut touch_out = AnyOutput::new(peripherals.GPIO1, Level::Low);
 
     let mut adc1_config = AdcConfig::new();
-    let mut touch_left = adc1_config.enable_pin(io.pins.gpio2, Attenuation::Attenuation11dB);
-    let mut touch_right = adc1_config.enable_pin(io.pins.gpio3, Attenuation::Attenuation11dB);
-    let mut touch_center = adc1_config.enable_pin(io.pins.gpio4, Attenuation::Attenuation11dB);
-    let mut touch_top = adc1_config.enable_pin(io.pins.gpio5, Attenuation::Attenuation11dB);
+    let mut touch_left = adc1_config.enable_pin(peripherals.GPIO2, Attenuation::Attenuation11dB);
+    let mut touch_right = adc1_config.enable_pin(peripherals.GPIO3, Attenuation::Attenuation11dB);
+    let mut touch_center = adc1_config.enable_pin(peripherals.GPIO4, Attenuation::Attenuation11dB);
+    let mut touch_top = adc1_config.enable_pin(peripherals.GPIO5, Attenuation::Attenuation11dB);
     let mut adc1 = Adc::new(peripherals.ADC1, adc1_config);
 
     const TOUCH_LEFT_THRESHOLD: u16 = 5000;

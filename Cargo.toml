@@ -15,7 +15,8 @@ esp-backtrace = { version = "0.15.1", features = [
 esp-hal = { git = "https://github.com/esp-rs/esp-hal.git", features = [ "esp32s2", "unstable" ] }
 esp-println = { version = "0.13.1", features = ["esp32s2", "log"] }
 log = { version = "0.4.26" }
-embedded-sdmmc = { git = "https://github.com/rust-embedded-community/embedded-sdmmc-rs.git" }
+embedded-sdmmc = "0.8.1"
+embedded-hal = "1.0.0"
 embedded-hal-bus = "0.3.0"
 esp-alloc = { git = "https://github.com/esp-rs/esp-hal.git", features = [ "nightly" ] }
 usb-device = "0.3.2"
