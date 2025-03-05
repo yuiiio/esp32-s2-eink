@@ -899,6 +899,28 @@ fn main() -> ! {
     }
     */
 
+    // benchmark
+    /*
+    write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();
+    match open_4bpp_image(&mut cur_child_dir, &mut img_buf, &file_name) {
+        Ok(_) => {
+            let t1 = esp_hal::time::Instant::now();
+            eink_display.write_all_black();
+            eink_display.write_4bpp_image(&img_buf);
+            let t2 = esp_hal::time::Instant::now();
+
+            let elapsed = t2 - t1;
+            loop {
+                if usb_dev.poll(&mut [&mut serial.0]) {
+                    break;
+                }
+            }
+            writeln!(serial, "benchmark elapsed: {}\n", elapsed).unwrap();
+        }
+        Err(_) => {}
+    }
+    */
+
     led.set_low();
     loop {
         'inner: loop {
