@@ -837,33 +837,34 @@ fn main() -> ! {
     let mut touch_top = adc1_config.enable_pin(peripherals.GPIO5, Attenuation::_11dB);
     let mut adc1 = Adc::new(peripherals.ADC1, adc1_config);
 
-    const TOUCH_LEFT_THRESHOLD: u16 = 5000;
-    const TOUCH_RIGHT_THRESHOLD: u16 = 5000;
-    const TOUCH_CENTER_THRESHOLD: u16 = 5000;
-    const TOUCH_TOP_THRESHOLD: u16 = 5000;
+    const TOUCH_LEFT_THRESHOLD: u16 = 3000;
+    const TOUCH_RIGHT_THRESHOLD: u16 = 3000;
+    const TOUCH_CENTER_THRESHOLD: u16 = 3000;
+    const TOUCH_TOP_THRESHOLD: u16 = 3200;
     const TOUCH_PULSE_HIGH_DELAY_NS: u32 = 400000;
-    const TOUCH_PULSE_LOW_DELAY_NS: u32 = 1;
 
     /*
     const RECORD_LEN: usize = 20;
-    let mut pulse_record: [u16; RECORD_LEN]= [0; RECORD_LEN];
+    let mut pulse_record: [u16; RECORD_LEN] = [0; RECORD_LEN];
     // ADC_ATTEN_DB_11: 0~2500mv
     // 12bit adc(but seems max 8192(1<<13) ?)
     loop {
         touch_out.set_high();
         delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
         touch_out.set_low();
-        delay.delay_nanos(1);
-        adc1.read_blocking(&mut touch_left); // first read goes always ~= 8192 so ignore
+        //delay.delay_nanos(1);
         // timer
         for i in 0..RECORD_LEN {
-            pulse_record[i] = adc1.read_blocking(&mut touch_left);
-            delay.delay_nanos(1);
+            pulse_record[i] = adc1.read_blocking(&mut touch_top);
+            //delay.delay_nanos(1);
         }
         // timer / RECORD_LEN = freq
         usb_dev.poll(&mut [&mut serial.0]);
         for i in 0..RECORD_LEN {
-            serial.0.write(&[(pulse_record[i] >> 8) as u8, (pulse_record[i] & 0xff) as u8]).ok();
+            serial
+                .0
+                .write(&[(pulse_record[i] >> 8) as u8, (pulse_record[i] & 0xff) as u8])
+                .ok();
         }
     }
     */
@@ -874,26 +875,18 @@ fn main() -> ! {
             touch_out.set_high();
             delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
             touch_out.set_low();
-            delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
-            adc1.read_blocking(&mut touch_left); // first read ignore
             let left_pin_value = adc1.read_blocking(&mut touch_left);
             touch_out.set_high();
             delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
             touch_out.set_low();
-            delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
-            adc1.read_blocking(&mut touch_right); // first read ignore
             let right_pin_value = adc1.read_blocking(&mut touch_right);
             touch_out.set_high();
             delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
             touch_out.set_low();
-            delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
-            adc1.read_blocking(&mut touch_center); // first read ignore
             let center_pin_value = adc1.read_blocking(&mut touch_center);
             touch_out.set_high();
             delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
             touch_out.set_low();
-            delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
-            adc1.read_blocking(&mut touch_top); // first read ignore
             let top_left_pin_value = adc1.read_blocking(&mut touch_top);
 
             if top_left_pin_value > TOUCH_TOP_THRESHOLD {
@@ -975,26 +968,18 @@ fn main() -> ! {
                     touch_out.set_high();
                     delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
                     touch_out.set_low();
-                    delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
-                    adc1.read_blocking(&mut touch_left); // first read ignore
                     let left_pin_value = adc1.read_blocking(&mut touch_left);
                     touch_out.set_high();
                     delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
                     touch_out.set_low();
-                    delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
-                    adc1.read_blocking(&mut touch_right); // first read ignore
                     let right_pin_value = adc1.read_blocking(&mut touch_right);
                     touch_out.set_high();
                     delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
                     touch_out.set_low();
-                    delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
-                    adc1.read_blocking(&mut touch_center); // first read ignore
                     let center_pin_value = adc1.read_blocking(&mut touch_center);
                     touch_out.set_high();
                     delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
                     touch_out.set_low();
-                    delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
-                    adc1.read_blocking(&mut touch_top); // first read ignore
                     let top_left_pin_value = adc1.read_blocking(&mut touch_top);
 
                     const SKIP_PAGE: u16 = 1;
@@ -1043,26 +1028,18 @@ fn main() -> ! {
                             touch_out.set_high();
                             delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
                             touch_out.set_low();
-                            delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
-                            adc1.read_blocking(&mut touch_left); // first read ignore
                             let left_pin_value = adc1.read_blocking(&mut touch_left);
                             touch_out.set_high();
                             delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
                             touch_out.set_low();
-                            delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
-                            adc1.read_blocking(&mut touch_right); // first read ignore
                             let right_pin_value = adc1.read_blocking(&mut touch_right);
                             touch_out.set_high();
                             delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
                             touch_out.set_low();
-                            delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
-                            adc1.read_blocking(&mut touch_center); // first read ignore
                             let center_pin_value = adc1.read_blocking(&mut touch_center);
                             touch_out.set_high();
                             delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
                             touch_out.set_low();
-                            delay.delay_nanos(TOUCH_PULSE_LOW_DELAY_NS);
-                            adc1.read_blocking(&mut touch_top); // first read ignore
                             let top_left_pin_value = adc1.read_blocking(&mut touch_top);
 
                             if left_pin_value > TOUCH_LEFT_THRESHOLD {
