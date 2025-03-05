@@ -112,7 +112,12 @@ impl EinkDisplay {
         self.mode1.set_high();
         self.spv.set_low();
         self.ckv.set_low();
-        self.delay.delay_micros(1);
+        //self.delay.delay_micros(1);
+        for _i in 0..8 {
+            unsafe {
+                asm!("nop");
+            }
+        }
         self.ckv.set_high();
         self.spv.set_high();
     }
@@ -149,7 +154,12 @@ impl EinkDisplay {
         self.xle.set_low();
 
         self.ckv.set_low();
-        self.delay.delay_micros(1);
+        //self.delay.delay_micros(1);
+        for _i in 0..8 {
+            unsafe {
+                asm!("nop");
+            }
+        }
         self.ckv.set_high();
     }
 
@@ -236,7 +246,12 @@ impl EinkDisplay {
                 self.xle.set_low();
 
                 self.ckv.set_low();
-                self.delay.delay_micros(1);
+                //self.delay.delay_micros(1);
+                for _i in 0..16 {
+                    unsafe {
+                        asm!("nop");
+                    }
+                }
                 self.ckv.set_high();
             }
             self.end_frame();
@@ -266,7 +281,12 @@ impl EinkDisplay {
                 self.xle.set_low();
 
                 self.ckv.set_low();
-                self.delay.delay_micros(1);
+                //self.delay.delay_micros(1);
+                for _i in 0..8 {
+                    unsafe {
+                        asm!("nop");
+                    }
+                }
                 self.ckv.set_high();
             }
             self.end_frame();
@@ -387,7 +407,12 @@ impl EinkDisplay {
                 self.xle.set_low();
 
                 self.ckv.set_low();
-                self.delay.delay_micros(1);
+                //self.delay.delay_micros(1);
+                for _i in 0..16 {
+                    unsafe {
+                        asm!("nop");
+                    }
+                }
                 self.ckv.set_high();
             }
             self.end_frame();
@@ -517,7 +542,12 @@ impl EinkDisplay {
                 self.xle.set_low();
 
                 self.ckv.set_low();
-                self.delay.delay_micros(1);
+                //self.delay.delay_micros(1);
+                for _i in 0..16 {
+                    unsafe {
+                        asm!("nop");
+                    }
+                }
                 self.ckv.set_high();
             }
             self.end_frame();
@@ -837,7 +867,7 @@ fn main() -> ! {
     let mut touch_top = adc1_config.enable_pin(peripherals.GPIO5, Attenuation::_11dB);
     let mut adc1 = Adc::new(peripherals.ADC1, adc1_config);
 
-    const TOUCH_LEFT_THRESHOLD: u16 = 2900;
+    const TOUCH_LEFT_THRESHOLD: u16 = 2950;
     const TOUCH_RIGHT_THRESHOLD: u16 = 2950;
     const TOUCH_CENTER_THRESHOLD: u16 = 2950;
     const TOUCH_TOP_THRESHOLD: u16 = 3100;
