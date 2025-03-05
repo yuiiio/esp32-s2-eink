@@ -837,10 +837,10 @@ fn main() -> ! {
     let mut touch_top = adc1_config.enable_pin(peripherals.GPIO5, Attenuation::_11dB);
     let mut adc1 = Adc::new(peripherals.ADC1, adc1_config);
 
-    const TOUCH_LEFT_THRESHOLD: u16 = 3000;
-    const TOUCH_RIGHT_THRESHOLD: u16 = 3000;
-    const TOUCH_CENTER_THRESHOLD: u16 = 3000;
-    const TOUCH_TOP_THRESHOLD: u16 = 3200;
+    const TOUCH_LEFT_THRESHOLD: u16 = 2900;
+    const TOUCH_RIGHT_THRESHOLD: u16 = 2950;
+    const TOUCH_CENTER_THRESHOLD: u16 = 2950;
+    const TOUCH_TOP_THRESHOLD: u16 = 3100;
     const TOUCH_PULSE_HIGH_DELAY_NS: u32 = 400000;
 
     /*
