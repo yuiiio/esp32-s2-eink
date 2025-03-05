@@ -112,12 +112,7 @@ impl EinkDisplay {
         self.mode1.set_high();
         self.spv.set_low();
         self.ckv.set_low();
-        //self.delay.delay_micros(1);
-        for _i in 0..8 {
-            unsafe {
-                asm!("nop");
-            }
-        }
+        self.delay.delay_micros(1);
         self.ckv.set_high();
         self.spv.set_high();
     }
@@ -154,12 +149,7 @@ impl EinkDisplay {
         self.xle.set_low();
 
         self.ckv.set_low();
-        //self.delay.delay_micros(1);
-        for _i in 0..8 {
-            unsafe {
-                asm!("nop");
-            }
-        }
+        self.delay.delay_micros(1);
         self.ckv.set_high();
     }
 
@@ -246,12 +236,7 @@ impl EinkDisplay {
                 self.xle.set_low();
 
                 self.ckv.set_low();
-                //self.delay.delay_micros(1);
-                for _i in 0..16 {
-                    unsafe {
-                        asm!("nop");
-                    }
-                }
+                self.delay.delay_micros(1);
                 self.ckv.set_high();
             }
             self.end_frame();
@@ -281,12 +266,7 @@ impl EinkDisplay {
                 self.xle.set_low();
 
                 self.ckv.set_low();
-                //self.delay.delay_micros(1);
-                for _i in 0..8 {
-                    unsafe {
-                        asm!("nop");
-                    }
-                }
+                self.delay.delay_micros(1);
                 self.ckv.set_high();
             }
             self.end_frame();
@@ -407,12 +387,7 @@ impl EinkDisplay {
                 self.xle.set_low();
 
                 self.ckv.set_low();
-                //self.delay.delay_micros(1);
-                for _i in 0..16 {
-                    unsafe {
-                        asm!("nop");
-                    }
-                }
+                self.delay.delay_micros(1);
                 self.ckv.set_high();
             }
             self.end_frame();
@@ -542,12 +517,7 @@ impl EinkDisplay {
                 self.xle.set_low();
 
                 self.ckv.set_low();
-                //self.delay.delay_micros(1);
-                for _i in 0..16 {
-                    unsafe {
-                        asm!("nop");
-                    }
-                }
+                self.delay.delay_micros(1);
                 self.ckv.set_high();
             }
             self.end_frame();
