@@ -840,7 +840,7 @@ fn main() -> ! {
     const TOUCH_LEFT_THRESHOLD: u16 = 2950;
     const TOUCH_RIGHT_THRESHOLD: u16 = 2950;
     const TOUCH_CENTER_THRESHOLD: u16 = 2950;
-    const TOUCH_TOP_THRESHOLD: u16 = 3050;
+    const TOUCH_TOP_THRESHOLD: u16 = 3100;
     const TOUCH_PULSE_HIGH_DELAY_NS: u32 = 400000;
 
     /*
