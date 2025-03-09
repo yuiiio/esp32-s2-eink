@@ -156,9 +156,48 @@ impl EinkDisplay {
     fn write_4bpp_image<U: core::alloc::Allocator>(&mut self, img_buf: &Vec<u8, U>) {
         for grayscale in [5, 10] {
             let mut pos: usize = 0;
+            let mut buf: [u8; WIDTH / 4] = [0u8; WIDTH / 4];
             self.start_frame();
-            for _line in 0..HEIGHT {
-                let mut buf: [u8; WIDTH / 4] = [0u8; WIDTH / 4];
+
+            for i in 0..(WIDTH / 4) {
+                let mut b: u8 = 0b10101010; // white
+                if (img_buf[pos] >> 4) <= grayscale {
+                    b ^= 0b11000000
+                }; //reverse => black
+                if (img_buf[pos] & 0x0f) <= grayscale {
+                    b ^= 0b00110000
+                };
+                pos += 1;
+                if (img_buf[pos] >> 4) <= grayscale {
+                    b ^= 0b00001100
+                };
+                if (img_buf[pos] & 0x0f) <= grayscale {
+                    b ^= 0b00000011
+                };
+                pos += 1;
+                buf[i] = b;
+            }
+            for _line in 0..(HEIGHT - 1) {
+                self.xstl.set_low();
+                /* can write 4 pixel for onece */
+                for pos in 0..(WIDTH / 4) {
+                    let four_pixels = buf[pos];
+                    // write 8bit
+                    unsafe {
+                        asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                    };
+                    self.xcl.set_high();
+                    self.xcl.set_low();
+                }
+                self.xstl.set_high();
+                self.xcl.set_high();
+                self.xcl.set_low();
+
+                self.xle.set_high();
+                self.xle.set_low();
+
+                self.ckv.set_low();
+                //self.delay.delay_micros(1);
                 for i in 0..(WIDTH / 4) {
                     let mut b: u8 = 0b10101010; // white
                     if (img_buf[pos] >> 4) <= grayscale {
@@ -177,8 +216,29 @@ impl EinkDisplay {
                     pos += 1;
                     buf[i] = b;
                 }
-                self.write_row(&buf);
+                self.ckv.set_high();
             }
+            self.xstl.set_low();
+            /* can write 4 pixel for onece */
+            for pos in 0..(WIDTH / 4) {
+                let four_pixels = buf[pos];
+                // write 8bit
+                unsafe {
+                    asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                };
+                self.xcl.set_high();
+                self.xcl.set_low();
+            }
+            self.xstl.set_high();
+            self.xcl.set_high();
+            self.xcl.set_low();
+
+            self.xle.set_high();
+            self.xle.set_low();
+
+            self.ckv.set_low();
+            self.delay.delay_micros(1);
+            self.ckv.set_high();
             self.end_frame();
         }
     }
@@ -869,8 +929,8 @@ fn main() -> ! {
     }
     */
 
-    // benchmark
     /*
+    // benchmark
     write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();
     match open_4bpp_image(&mut cur_child_dir, &mut img_buf, &file_name) {
         Ok(_) => {
