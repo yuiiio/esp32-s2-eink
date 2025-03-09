@@ -274,7 +274,7 @@ impl EinkDisplay {
     }
 
     fn write_all_black(&mut self) {
-        for _cycle in 0..2 {
+        for _cycle in 0..1 {
             // black
             let four_pixels: u8 = 0b01010101;
             unsafe {
@@ -304,7 +304,7 @@ impl EinkDisplay {
     }
 
     fn write_all_white(&mut self) {
-        for _cycle in 0..2 {
+        for _cycle in 0..1 {
             // white
             let four_pixels: u8 = 0b10101010;
             unsafe {
@@ -1193,6 +1193,7 @@ fn main() -> ! {
         match open_4bpp_image(&mut cur_child_dir, &mut img_buf, &file_name) {
             Ok(_) => {
                 //eink_display.write_4bpp_reverse_image(&img_buf);
+                eink_display.write_all_white();
                 eink_display.write_all_black();
                 eink_display.write_4bpp_image(&img_buf);
                 flash
