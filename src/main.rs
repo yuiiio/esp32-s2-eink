@@ -244,7 +244,7 @@ impl EinkDisplay {
     }
 
     fn write_4bpp_reverse_image<U: core::alloc::Allocator>(&mut self, img_buf: &Vec<u8, U>) {
-        for grayscale in 6..8 {
+        for grayscale in [8] {
             let mut pos: usize = 0;
             self.start_frame();
             for _line in 0..HEIGHT {
@@ -1244,8 +1244,8 @@ fn main() -> ! {
         write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();
         match open_4bpp_image(&mut cur_child_dir, &mut img_buf, &file_name) {
             Ok(_) => {
-                //eink_display.write_4bpp_reverse_image(&img_buf);
-                eink_display.write_all_black_white();
+                eink_display.write_4bpp_reverse_image(&img_buf);
+                //eink_display.write_all_black_white();
                 eink_display.write_4bpp_image(&img_buf);
                 flash
                     .write(
