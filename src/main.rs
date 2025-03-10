@@ -93,6 +93,9 @@ const WIDTH: usize = 1448;
 
 const FOUR_BPP_BUF_SIZE: usize = WIDTH * HEIGHT * 4 / 8;
 
+const BLACK_FOUR_PIXEL: u8 = 0b01010101;
+const WHITE_FOUR_PIXEL: u8 = 0b10101010;
+
 struct EinkDisplay {
     pub mode1: Output<'static>,
     pub ckv: Output<'static>,
@@ -160,7 +163,7 @@ impl EinkDisplay {
             self.start_frame();
 
             for i in 0..(WIDTH / 4) {
-                let mut b: u8 = 0b10101010; // white
+                let mut b: u8 = WHITE_FOUR_PIXEL; // white
                 if (img_buf[pos] >> 4) <= grayscale {
                     b ^= 0b11000000
                 }; //reverse => black
@@ -199,7 +202,7 @@ impl EinkDisplay {
                 self.ckv.set_low();
                 //self.delay.delay_micros(1);
                 for i in 0..(WIDTH / 4) {
-                    let mut b: u8 = 0b10101010; // white
+                    let mut b: u8 = WHITE_FOUR_PIXEL; // white
                     if (img_buf[pos] >> 4) <= grayscale {
                         b ^= 0b11000000
                     }; //reverse => black
@@ -250,7 +253,7 @@ impl EinkDisplay {
             self.start_frame();
 
             for i in 0..(WIDTH / 4) {
-                let mut b: u8 = 0b10101010; // white
+                let mut b: u8 = WHITE_FOUR_PIXEL; // white
                 if (img_buf[pos] >> 4) > grayscale {
                     b ^= 0b11000000
                 }; //reverse => black
@@ -289,7 +292,7 @@ impl EinkDisplay {
                 self.ckv.set_low();
                 //self.delay.delay_micros(1);
                 for i in 0..(WIDTH / 4) {
-                    let mut b: u8 = 0b10101010; // white
+                    let mut b: u8 = WHITE_FOUR_PIXEL; // white
                     if (img_buf[pos] >> 4) > grayscale {
                         b ^= 0b11000000
                     }; //reverse => black
@@ -336,7 +339,7 @@ impl EinkDisplay {
     fn write_all_black(&mut self) {
         for _cycle in 0..1 {
             // black
-            let four_pixels: u8 = 0b01010101;
+            let four_pixels: u8 = BLACK_FOUR_PIXEL;
             unsafe {
                 asm!("wur.gpio_out {0}", in(reg) four_pixels);
             }
@@ -366,7 +369,7 @@ impl EinkDisplay {
     fn write_all_white(&mut self) {
         for _cycle in 0..1 {
             // white
-            let four_pixels: u8 = 0b10101010;
+            let four_pixels: u8 = WHITE_FOUR_PIXEL;
             unsafe {
                 asm!("wur.gpio_out {0}", in(reg) four_pixels);
             }
@@ -395,7 +398,7 @@ impl EinkDisplay {
 
     fn write_all_black_white(&mut self) {
         // black
-        let four_pixels: u8 = 0b01010101;
+        let four_pixels: u8 = BLACK_FOUR_PIXEL;
         unsafe {
             asm!("wur.gpio_out {0}", in(reg) four_pixels);
         }
@@ -420,7 +423,7 @@ impl EinkDisplay {
         }
         self.end_frame();
         // white
-        let four_pixels: u8 = 0b10101010;
+        let four_pixels: u8 = WHITE_FOUR_PIXEL;
         unsafe {
             asm!("wur.gpio_out {0}", in(reg) four_pixels);
         }
@@ -458,7 +461,7 @@ impl EinkDisplay {
                 if first_commit {
                     if status_var.abs_diff(line as u32) <= BAR_WIDTH {
                         //black button
-                        let four_pixels: u8 = 0b01010101;
+                        let four_pixels: u8 = BLACK_FOUR_PIXEL;
                         unsafe {
                             asm!("wur.gpio_out {0}", in(reg) four_pixels);
                         }
@@ -469,7 +472,7 @@ impl EinkDisplay {
                         }
                     } else {
                         //white backgruond
-                        let four_pixels: u8 = 0b10101010;
+                        let four_pixels: u8 = WHITE_FOUR_PIXEL;
                         unsafe {
                             asm!("wur.gpio_out {0}", in(reg) four_pixels);
                         }
@@ -480,7 +483,7 @@ impl EinkDisplay {
                         }
                     }
                     //black
-                    let four_pixels: u8 = 0b01010101;
+                    let four_pixels: u8 = BLACK_FOUR_PIXEL;
                     unsafe {
                         asm!("wur.gpio_out {0}", in(reg) four_pixels);
                     }
@@ -493,7 +496,7 @@ impl EinkDisplay {
                     if status_var.abs_diff(line as u32) <= BAR_WIDTH {
                         if pre_status_var.abs_diff(line as u32) > BAR_WIDTH {
                             //black button
-                            let four_pixels: u8 = 0b01010101;
+                            let four_pixels: u8 = BLACK_FOUR_PIXEL;
                             unsafe {
                                 asm!("wur.gpio_out {0}", in(reg) four_pixels);
                             }
@@ -517,7 +520,7 @@ impl EinkDisplay {
                     } else {
                         if pre_status_var.abs_diff(line as u32) <= BAR_WIDTH {
                             //white background
-                            let four_pixels: u8 = 0b10101010;
+                            let four_pixels: u8 = WHITE_FOUR_PIXEL;
                             unsafe {
                                 asm!("wur.gpio_out {0}", in(reg) four_pixels);
                             }
@@ -589,10 +592,11 @@ impl EinkDisplay {
                 }
                 if first_commit {
                     //black
-                    let four_pixels: u8 = 0b01010101;
+                    let four_pixels: u8 = BLACK_FOUR_PIXEL;
                     unsafe {
                         asm!("wur.gpio_out {0}", in(reg) four_pixels);
                     }
+                    self.delay.delay_micros(1);
                     for _i in 0..SPLIT_WIDTH {
                         // draw split bar
                         self.xcl.set_high();
@@ -600,7 +604,7 @@ impl EinkDisplay {
                     }
                     if status_var.abs_diff(line as u32) <= BAR_WIDTH {
                         //black button
-                        let four_pixels: u8 = 0b01010101;
+                        let four_pixels: u8 = BLACK_FOUR_PIXEL;
                         unsafe {
                             asm!("wur.gpio_out {0}", in(reg) four_pixels);
                         }
@@ -611,7 +615,7 @@ impl EinkDisplay {
                         }
                     } else {
                         //white backgruond
-                        let four_pixels: u8 = 0b10101010;
+                        let four_pixels: u8 = WHITE_FOUR_PIXEL;
                         unsafe {
                             asm!("wur.gpio_out {0}", in(reg) four_pixels);
                         }
@@ -635,7 +639,7 @@ impl EinkDisplay {
                     if status_var.abs_diff(line as u32) <= BAR_WIDTH {
                         if pre_status_var.abs_diff(line as u32) > BAR_WIDTH {
                             //black button
-                            let four_pixels: u8 = 0b01010101;
+                            let four_pixels: u8 = BLACK_FOUR_PIXEL;
                             unsafe {
                                 asm!("wur.gpio_out {0}", in(reg) four_pixels);
                             }
@@ -659,7 +663,7 @@ impl EinkDisplay {
                     } else {
                         if pre_status_var.abs_diff(line as u32) <= BAR_WIDTH {
                             //white background
-                            let four_pixels: u8 = 0b10101010;
+                            let four_pixels: u8 = WHITE_FOUR_PIXEL;
                             unsafe {
                                 asm!("wur.gpio_out {0}", in(reg) four_pixels);
                             }
