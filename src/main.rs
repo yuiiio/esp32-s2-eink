@@ -333,6 +333,59 @@ impl EinkDisplay {
         }
     }
 
+    fn write_all_white_black(&mut self) {
+        // white
+        let four_pixels: u8 = 0b10101010;
+        unsafe {
+            asm!("wur.gpio_out {0}", in(reg) four_pixels);
+        }
+        self.start_frame();
+        for _line in 0..HEIGHT {
+            self.xstl.set_low();
+            /* can write 4 pixel for onece */
+            for _pos in 0..(WIDTH / 4) {
+                self.xcl.set_high();
+                self.xcl.set_low();
+            }
+            self.xstl.set_high();
+            self.xcl.set_high();
+            self.xcl.set_low();
+
+            self.xle.set_high();
+            self.xle.set_low();
+
+            self.ckv.set_low();
+            self.delay.delay_micros(1);
+            self.ckv.set_high();
+        }
+        self.end_frame();
+        // black
+        let four_pixels: u8 = 0b01010101;
+        unsafe {
+            asm!("wur.gpio_out {0}", in(reg) four_pixels);
+        }
+        self.start_frame();
+        for _line in 0..HEIGHT {
+            self.xstl.set_low();
+            /* can write 4 pixel for onece */
+            for _pos in 0..(WIDTH / 4) {
+                self.xcl.set_high();
+                self.xcl.set_low();
+            }
+            self.xstl.set_high();
+            self.xcl.set_high();
+            self.xcl.set_low();
+
+            self.xle.set_high();
+            self.xle.set_low();
+
+            self.ckv.set_low();
+            self.delay.delay_micros(1);
+            self.ckv.set_high();
+        }
+        self.end_frame();
+    }
+
     fn write_top_indicator(&mut self, first_commit: bool, status_var: u32, pre_status_var: u32) {
         // partial update
         const TOP_INDICATOR_WIDTH_DIV_4: usize = 100 / 4;
@@ -935,7 +988,7 @@ fn main() -> ! {
     match open_4bpp_image(&mut cur_child_dir, &mut img_buf, &file_name) {
         Ok(_) => {
             let t1 = esp_hal::time::Instant::now();
-            eink_display.write_all_black();
+            eink_display.write_all_white_black();
             eink_display.write_4bpp_image(&img_buf);
             let t2 = esp_hal::time::Instant::now();
 
@@ -972,8 +1025,7 @@ fn main() -> ! {
             let top_left_pin_value = adc1.read_blocking(&mut touch_top);
 
             if top_left_pin_value > TOUCH_TOP_THRESHOLD {
-                eink_display.write_all_white();
-                eink_display.write_all_black();
+                eink_display.write_all_white_black();
             }
 
             if left_pin_value > TOUCH_LEFT_THRESHOLD {
@@ -1193,8 +1245,7 @@ fn main() -> ! {
         match open_4bpp_image(&mut cur_child_dir, &mut img_buf, &file_name) {
             Ok(_) => {
                 //eink_display.write_4bpp_reverse_image(&img_buf);
-                eink_display.write_all_white();
-                eink_display.write_all_black();
+                eink_display.write_all_white_black();
                 eink_display.write_4bpp_image(&img_buf);
                 flash
                     .write(
