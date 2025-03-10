@@ -840,11 +840,15 @@ fn main() -> ! {
 
     let mut volume_manager = VolumeManager::new(sdcard, FakeTimesource {});
 
-    let mut img_buf: Vec<u8, _> = Vec::with_capacity_in(FOUR_BPP_BUF_SIZE, &esp_alloc::HEAP);
+    let mut img_buf_1: Vec<u8, _> = Vec::with_capacity_in(FOUR_BPP_BUF_SIZE, &esp_alloc::HEAP);
     for _i in 0..FOUR_BPP_BUF_SIZE {
-        img_buf.push(0u8);
+        img_buf_1.push(0u8);
     }
     // too big for dram? so use psram(2M)
+    let mut img_buf_2: Vec<u8, _> = Vec::with_capacity_in(FOUR_BPP_BUF_SIZE, &esp_alloc::HEAP);
+    for _i in 0..FOUR_BPP_BUF_SIZE {
+        img_buf_2.push(0u8);
+    }
 
     /* get the values of dedicated GPIO from the CPU, not peripheral registers */
     for i in 0..8 {
@@ -994,6 +998,10 @@ fn main() -> ! {
     } else {
         cur_dir_files_len
     };
+
+    let mut pre_buf = &mut img_buf_1;
+    let mut next_buf = &mut img_buf_2;
+
     let mut cur_page: u16 = if last_opend_page_num > cur_dir_files_len {
         0
     } else {
@@ -1303,11 +1311,11 @@ fn main() -> ! {
         }
         file_name.clear();
         write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();
-        match open_4bpp_image(&mut cur_child_dir, &mut img_buf, &file_name) {
+        match open_4bpp_image(&mut cur_child_dir, &mut next_buf, &file_name) {
             Ok(_) => {
-                eink_display.write_4bpp_reverse_image(&img_buf);
+                eink_display.write_4bpp_reverse_image(&pre_buf);
                 //eink_display.write_all_black_white();
-                eink_display.write_4bpp_image(&img_buf);
+                eink_display.write_4bpp_image(&next_buf);
                 flash
                     .write(
                         flash_addr,
@@ -1321,5 +1329,6 @@ fn main() -> ! {
                 eink_display.write_all_black();
             }
         };
+        core::mem::swap(pre_buf, next_buf);
     }
 }
