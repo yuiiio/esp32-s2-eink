@@ -154,7 +154,7 @@ impl EinkDisplay {
     }
 
     fn write_4bpp_image<U: core::alloc::Allocator>(&mut self, img_buf: &Vec<u8, U>) {
-        for grayscale in [5, 10] {
+        for grayscale in [12, 8] {
             let mut pos: usize = 0;
             let mut buf: [u8; WIDTH / 4] = [0u8; WIDTH / 4];
             self.start_frame();
@@ -333,9 +333,9 @@ impl EinkDisplay {
         }
     }
 
-    fn write_all_white_black(&mut self) {
-        // white
-        let four_pixels: u8 = 0b10101010;
+    fn write_all_black_white(&mut self) {
+        // black
+        let four_pixels: u8 = 0b01010101;
         unsafe {
             asm!("wur.gpio_out {0}", in(reg) four_pixels);
         }
@@ -359,8 +359,8 @@ impl EinkDisplay {
             self.ckv.set_high();
         }
         self.end_frame();
-        // black
-        let four_pixels: u8 = 0b01010101;
+        // white
+        let four_pixels: u8 = 0b10101010;
         unsafe {
             asm!("wur.gpio_out {0}", in(reg) four_pixels);
         }
@@ -988,7 +988,7 @@ fn main() -> ! {
     match open_4bpp_image(&mut cur_child_dir, &mut img_buf, &file_name) {
         Ok(_) => {
             let t1 = esp_hal::time::Instant::now();
-            eink_display.write_all_white_black();
+            eink_display.write_all_black_white();
             eink_display.write_4bpp_image(&img_buf);
             let t2 = esp_hal::time::Instant::now();
 
@@ -1025,7 +1025,7 @@ fn main() -> ! {
             let top_left_pin_value = adc1.read_blocking(&mut touch_top);
 
             if top_left_pin_value > TOUCH_TOP_THRESHOLD {
-                eink_display.write_all_white_black();
+                eink_display.write_all_black_white();
             }
 
             if left_pin_value > TOUCH_LEFT_THRESHOLD {
@@ -1245,7 +1245,7 @@ fn main() -> ! {
         match open_4bpp_image(&mut cur_child_dir, &mut img_buf, &file_name) {
             Ok(_) => {
                 //eink_display.write_4bpp_reverse_image(&img_buf);
-                eink_display.write_all_white_black();
+                eink_display.write_all_black_white();
                 eink_display.write_4bpp_image(&img_buf);
                 flash
                     .write(
@@ -1256,8 +1256,8 @@ fn main() -> ! {
             }
             Err(_error) => {
                 /* not found file */
-                eink_display.write_all_black();
                 eink_display.write_all_white();
+                eink_display.write_all_black();
             }
         };
     }
