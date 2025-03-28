@@ -1317,9 +1317,9 @@ fn main() -> ! {
         write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();
         match open_4bpp_image(&mut cur_child_dir, &mut next_buf, &file_name) {
             Ok(_) => {
-                eink_display.write_4bpp_reverse_image(&pre_buf);
+                //eink_display.write_4bpp_reverse_image(&pre_buf);
+                eink_display.write_all_black_white();
                 eink_display.write_4bpp_reverse_image(&next_buf);
-                //eink_display.write_all_black_white();
                 eink_display.write_4bpp_image(&next_buf);
                 flash
                     .write(
