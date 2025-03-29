@@ -95,6 +95,7 @@ const FOUR_BPP_BUF_SIZE: usize = WIDTH * HEIGHT * 4 / 8;
 
 const BLACK_FOUR_PIXEL: u8 = 0b01010101;
 const WHITE_FOUR_PIXEL: u8 = 0b10101010;
+const NONE_FOUR_PIXEL: u8 = 0b00000000;
 
 struct EinkDisplay {
     pub mode1: Output<'static>,
@@ -305,6 +306,99 @@ impl EinkDisplay {
                     };
                     if (img_buf[pos] & 0x0f) > grayscale {
                         b ^= 0b00000011
+                    };
+                    pos += 1;
+                    buf[i] = b;
+                }
+                self.ckv.set_high();
+            }
+            self.xstl.set_low();
+            /* can write 4 pixel for onece */
+            for pos in 0..(WIDTH / 4) {
+                let four_pixels = buf[pos];
+                // write 8bit
+                unsafe {
+                    asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                };
+                self.xcl.set_high();
+                self.xcl.set_low();
+            }
+            self.xstl.set_high();
+            self.xcl.set_high();
+            self.xcl.set_low();
+
+            self.xle.set_high();
+            self.xle.set_low();
+
+            self.ckv.set_low();
+            self.delay.delay_micros(1);
+            self.ckv.set_high();
+            self.end_frame();
+        }
+    }
+
+    fn write_4bpp_partialy_reverse_image<U: core::alloc::Allocator>(
+        &mut self,
+        img_buf: &Vec<u8, U>,
+    ) {
+        for grayscale in [8] {
+            let mut pos: usize = 0;
+            let mut buf: [u8; WIDTH / 4] = [0u8; WIDTH / 4];
+            self.start_frame();
+
+            for i in 0..(WIDTH / 4) {
+                let mut b: u8 = NONE_FOUR_PIXEL;
+                if (img_buf[pos] >> 4) > grayscale {
+                    b ^= 0b01000000
+                }; //NONE => black
+                if (img_buf[pos] & 0x0f) > grayscale {
+                    b ^= 0b00010000
+                };
+                pos += 1;
+                if (img_buf[pos] >> 4) > grayscale {
+                    b ^= 0b00000100
+                };
+                if (img_buf[pos] & 0x0f) > grayscale {
+                    b ^= 0b00000001
+                };
+                pos += 1;
+                buf[i] = b;
+            }
+            for _line in 0..(HEIGHT - 1) {
+                self.xstl.set_low();
+                /* can write 4 pixel for onece */
+                for pos in 0..(WIDTH / 4) {
+                    let four_pixels = buf[pos];
+                    // write 8bit
+                    unsafe {
+                        asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                    };
+                    self.xcl.set_high();
+                    self.xcl.set_low();
+                }
+                self.xstl.set_high();
+                self.xcl.set_high();
+                self.xcl.set_low();
+
+                self.xle.set_high();
+                self.xle.set_low();
+
+                self.ckv.set_low();
+                //self.delay.delay_micros(1);
+                for i in 0..(WIDTH / 4) {
+                    let mut b: u8 = NONE_FOUR_PIXEL;
+                    if (img_buf[pos] >> 4) > grayscale {
+                        b ^= 0b01000000
+                    }; //NONE => black
+                    if (img_buf[pos] & 0x0f) > grayscale {
+                        b ^= 0b00010000
+                    };
+                    pos += 1;
+                    if (img_buf[pos] >> 4) > grayscale {
+                        b ^= 0b00000100
+                    };
+                    if (img_buf[pos] & 0x0f) > grayscale {
+                        b ^= 0b00000001
                     };
                     pos += 1;
                     buf[i] = b;
@@ -844,12 +938,10 @@ fn main() -> ! {
 
     let mut volume_manager = VolumeManager::new(sdcard, FakeTimesource {});
 
-    /*
     let mut img_buf_1: Vec<u8, _> = Vec::with_capacity_in(FOUR_BPP_BUF_SIZE, &esp_alloc::HEAP);
     for _i in 0..FOUR_BPP_BUF_SIZE {
         img_buf_1.push(0u8);
     }
-    */
 
     // too big for dram? so use psram(2M)
     let mut img_buf_2: Vec<u8, _> = Vec::with_capacity_in(FOUR_BPP_BUF_SIZE, &esp_alloc::HEAP);
@@ -1006,7 +1098,7 @@ fn main() -> ! {
         cur_dir_files_len
     };
 
-    //let mut pre_buf = &mut img_buf_1;
+    let pre_buf = &mut img_buf_1;
     let mut next_buf = &mut img_buf_2;
 
     let mut cur_page: u16 = if last_opend_page_num > cur_dir_files_len {
@@ -1320,9 +1412,10 @@ fn main() -> ! {
         write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();
         match open_4bpp_image(&mut cur_child_dir, &mut next_buf, &file_name) {
             Ok(_) => {
-                //eink_display.write_4bpp_reverse_image(&pre_buf);
-                eink_display.write_all_black_white();
-                eink_display.write_all_black_white();
+                eink_display.write_4bpp_partialy_reverse_image(&pre_buf);
+                //eink_display.write_all_black_white();
+                //eink_display.write_all_white();
+                //eink_display.write_all_black();
                 //eink_display.write_4bpp_reverse_image(&next_buf);
                 eink_display.write_4bpp_image(&next_buf);
                 flash
@@ -1338,6 +1431,6 @@ fn main() -> ! {
                 eink_display.write_all_black();
             }
         };
-        //core::mem::swap(pre_buf, next_buf);
+        core::mem::swap(pre_buf, next_buf);
     }
 }
