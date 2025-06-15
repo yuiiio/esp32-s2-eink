@@ -811,7 +811,7 @@ fn open_4bpp_image<
 where
     embedded_sdmmc::Error<SdCardError>: From<embedded_sdmmc::Error<<D as BlockDevice>::Error>>,
 {
-    let mut file = cur_dir.open_file_in_dir(file_name, Mode::ReadOnly)?;
+    let file = cur_dir.open_file_in_dir(file_name, Mode::ReadOnly)?;
 
     let mut tiff_header = [0u8; 8];
     file.read(&mut tiff_header)?; // first 8 bytes is annotation header
@@ -936,7 +936,7 @@ fn main() -> ! {
     writeln!(serial, "Card size is {} bytes\n", sdcard.num_bytes().unwrap()).unwrap();
     */
 
-    let mut volume_manager = VolumeManager::new(sdcard, FakeTimesource {});
+    let volume_manager = VolumeManager::new(sdcard, FakeTimesource {});
 
     /*
     let mut img_buf_1: Vec<u8, _> = Vec::with_capacity_in(FOUR_BPP_BUF_SIZE, &esp_alloc::HEAP);
@@ -1038,10 +1038,10 @@ fn main() -> ! {
     eink_display.write_all_white();
     eink_display.write_all_black();
 
-    let mut volume0 = volume_manager
+    let volume0 = volume_manager
         .open_volume(VolumeIdx(0))
         .expect("failed to open volume");
-    let mut root_dir = volume0.open_root_dir().expect("failed to open volume");
+    let root_dir = volume0.open_root_dir().expect("failed to open volume");
 
     //let mut root_dir_child_dirs = Vec::with_capacity_in(9999, &PSRAM_ALLOCATOR); //DirEntry is 32 bytes // ShortFileName is [u8; 11]
     let mut root_dir_directories_len: u16 = 0;
