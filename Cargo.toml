@@ -9,7 +9,6 @@ license = "MIT OR Apache-2.0"
 esp-bootloader-esp-idf= { git = "https://github.com/esp-rs/esp-hal.git", features = [ "esp32s2" ] }
 esp-backtrace = { version = "0.17.0", features = [
     "esp32s2",
-    "exception-handler",
     "panic-handler",
     "println",
 ] }

@@ -994,28 +994,28 @@ fn main() -> ! {
     // IO_MUX_MCU_SEL
     // hm RegisterBlock in esp32s2 pac doesnot impl gpio(num)
     unsafe { &*IO_MUX::PTR }
-        .gpio18()
+        .gpio(18)
         .modify(|_, w| unsafe { w.mcu_sel().bits(1) }); // set to Function 1
     unsafe { &*IO_MUX::PTR }
-        .gpio21()
+        .gpio(21)
         .modify(|_, w| unsafe { w.mcu_sel().bits(1) });
     unsafe { &*IO_MUX::PTR }
-        .gpio16()
+        .gpio(16)
         .modify(|_, w| unsafe { w.mcu_sel().bits(1) });
     unsafe { &*IO_MUX::PTR }
-        .gpio17()
+        .gpio(17)
         .modify(|_, w| unsafe { w.mcu_sel().bits(1) });
     unsafe { &*IO_MUX::PTR }
-        .gpio7()
+        .gpio(7)
         .modify(|_, w| unsafe { w.mcu_sel().bits(1) });
     unsafe { &*IO_MUX::PTR }
-        .gpio9()
+        .gpio(9)
         .modify(|_, w| unsafe { w.mcu_sel().bits(1) });
     unsafe { &*IO_MUX::PTR }
-        .gpio10()
+        .gpio(10)
         .modify(|_, w| unsafe { w.mcu_sel().bits(1) });
     unsafe { &*IO_MUX::PTR }
-        .gpio13()
+        .gpio(13)
         .modify(|_, w| unsafe { w.mcu_sel().bits(1) });
 
     let mode1 = Output::new(peripherals.GPIO11, Level::High, OutputConfig::default());
