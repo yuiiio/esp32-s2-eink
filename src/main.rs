@@ -26,6 +26,8 @@ use esp_hal::{
     time::Rate,
 };
 
+esp_bootloader_esp_idf::esp_app_desc!();
+
 use usb_device::prelude::{UsbDeviceBuilder, UsbVidPid};
 use usbd_serial::{SerialPort, USB_CLASS_CDC};
 
