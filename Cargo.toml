@@ -7,14 +7,14 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 esp-bootloader-esp-idf= { git = "https://github.com/esp-rs/esp-hal.git", features = [ "esp32s2" ] }
-esp-backtrace = { version = "0.17.0", features = [
+esp-backtrace = { version = "0.18.1", features = [
     "esp32s2",
     "panic-handler",
     "println",
 ] }
 esp-hal = { git = "https://github.com/esp-rs/esp-hal.git", features = [ "esp32s2", "unstable", "psram" ] }
 # esp-hal = { path = "../esp-hal/esp-hal/", features = [ "esp32s2", "unstable", "psram" ] }
-esp-println = { version = "0.15.0", features = ["esp32s2", "log-04"] }
+esp-println = { version = "0.16.1", features = ["esp32s2", "log-04"] }
 log = { version = "0.4.26" }
 embedded-sdmmc = "0.9.0"
 embedded-hal = "1.0.0"
@@ -22,7 +22,7 @@ embedded-hal-bus = "0.3.0"
 esp-alloc = { git = "https://github.com/esp-rs/esp-hal.git", features = [ "nightly" ] }
 usb-device = "0.3.2"
 usbd-serial = "0.2.2"
-heapless = "0.8.0"
+heapless = "0.9.1"
 embedded-storage = "0.3.1"
 esp-storage = { git = "https://github.com/esp-rs/esp-hal.git", features = ["esp32s2"] }
 [profile.dev]

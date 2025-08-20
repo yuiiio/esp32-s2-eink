@@ -659,7 +659,7 @@ fn main() -> ! {
 
     /* flash rom */
     let mut bytes = [0u8; 4];
-    let mut flash = FlashStorage::new();
+    let mut flash = FlashStorage::new(peripherals.FLASH);
     let flash_addr = 0x9000; // default NVS size: 0x6000
                              //write!(serial, "Flash size = {}\n", flash.capacity()).unwrap();
     flash.read(flash_addr, &mut bytes).unwrap();
