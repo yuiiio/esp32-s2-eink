@@ -160,25 +160,24 @@ impl EinkDisplay {
         self.ckv.set_high();
     }
 
-    fn write_4bpp_image(&mut self, img_buf: &[u8; FOUR_BPP_BUF_SIZE]) {
-        for grayscale in [12, 8] {
+    fn write_2bpp_image(&mut self, img_buf: &[u8; FOUR_BPP_BUF_SIZE]) {
+        for grayscale in [2, 1] {
             let mut pos: usize = 0;
             let mut buf: [u8; WIDTH / 4] = [0u8; WIDTH / 4];
             self.start_frame();
 
             for i in 0..(WIDTH / 4) {
                 let mut b: u8 = WHITE_FOUR_PIXEL; // white
-                if (img_buf[pos] >> 4) <= grayscale {
+                if (img_buf[pos] & 0b11000000) <= grayscale << 6 {
                     b ^= 0b11000000
                 }; //reverse => black
-                if (img_buf[pos] & 0x0f) <= grayscale {
+                if (img_buf[pos] & 0b00110000) <= grayscale << 4{
                     b ^= 0b00110000
                 };
-                pos += 1;
-                if (img_buf[pos] >> 4) <= grayscale {
+                if (img_buf[pos] & 0b00001100) <= grayscale << 2{
                     b ^= 0b00001100
                 };
-                if (img_buf[pos] & 0x0f) <= grayscale {
+                if (img_buf[pos] & 0b00000011) <= grayscale {
                     b ^= 0b00000011
                 };
                 pos += 1;
@@ -207,17 +206,16 @@ impl EinkDisplay {
                 //self.delay.delay_micros(1);
                 for i in 0..(WIDTH / 4) {
                     let mut b: u8 = WHITE_FOUR_PIXEL; // white
-                    if (img_buf[pos] >> 4) <= grayscale {
+                    if (img_buf[pos] & 0b11000000) <= grayscale << 6 {
                         b ^= 0b11000000
                     }; //reverse => black
-                    if (img_buf[pos] & 0x0f) <= grayscale {
+                    if (img_buf[pos] & 0b00110000) <= grayscale << 4{
                         b ^= 0b00110000
                     };
-                    pos += 1;
-                    if (img_buf[pos] >> 4) <= grayscale {
+                    if (img_buf[pos] & 0b00001100) <= grayscale << 2{
                         b ^= 0b00001100
                     };
-                    if (img_buf[pos] & 0x0f) <= grayscale {
+                    if (img_buf[pos] & 0b00000011) <= grayscale {
                         b ^= 0b00000011
                     };
                     pos += 1;
@@ -1420,7 +1418,7 @@ fn main() -> ! {
                 eink_display.write_all_white();
                 eink_display.write_all_black();
                 //eink_display.write_4bpp_reverse_image(&next_buf);
-                eink_display.write_4bpp_image(next_buf);
+                eink_display.write_2bpp_image(next_buf);
                 flash
                     .write(
                         flash_addr,
