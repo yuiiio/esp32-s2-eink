@@ -13,7 +13,7 @@ do
     mkdir ${CHAP_NUM_4D}
 
     while read file; do
-        convert "${JPG_DIR}"/"${file}" -alpha off -rotate $2 -resize 1448x1072 -gravity center -extent 1448x1072 -colorspace gray -remap hald:4 -depth 4 -compress none ${CHAP_NUM_4D}/$(printf "%03d" ${PAGE_NUM}).tif
+        convert "${JPG_DIR}"/"${file}" -alpha off -rotate $2 -resize 1448x1072 -gravity center -extent 1448x1072 -colorspace gray -unsharp 0x1.0 -clahe 20x20%+128+3 -dither FloydSteinberg -depth 2 -compress none ${CHAP_NUM_4D}/$(printf "%03d" ${PAGE_NUM}).tif
         echo $((PAGE_NUM++))
     done < <(ls -A -1 "${JPG_DIR}" | grep "${CHAP_NUM_4D}")
 
