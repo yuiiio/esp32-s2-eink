@@ -6,6 +6,7 @@
 extern crate alloc;
 use alloc::string::String;
 use alloc::vec::Vec;
+use alloc::boxed::Box;
 
 use esp_alloc;
 
@@ -93,7 +94,7 @@ const DPORT_RST_EN_DEDICATED_GPIO: usize = 1 << 7;
 const HEIGHT: usize = 1072;
 const WIDTH: usize = 1448;
 
-const FOUR_BPP_BUF_SIZE: usize = WIDTH * HEIGHT * 4 / 8;
+const FOUR_BPP_BUF_SIZE: usize = WIDTH * HEIGHT * 2 / 8;
 
 const BLACK_FOUR_PIXEL: u8 = 0b01010101;
 const WHITE_FOUR_PIXEL: u8 = 0b10101010;
@@ -159,7 +160,7 @@ impl EinkDisplay {
         self.ckv.set_high();
     }
 
-    fn write_4bpp_image<U: core::alloc::Allocator>(&mut self, img_buf: &Vec<u8, U>) {
+    fn write_4bpp_image(&mut self, img_buf: &[u8; FOUR_BPP_BUF_SIZE]) {
         for grayscale in [12, 8] {
             let mut pos: usize = 0;
             let mut buf: [u8; WIDTH / 4] = [0u8; WIDTH / 4];
@@ -249,7 +250,7 @@ impl EinkDisplay {
         }
     }
 
-    fn write_4bpp_reverse_image<U: core::alloc::Allocator>(&mut self, img_buf: &Vec<u8, U>) {
+    fn write_4bpp_reverse_image<U: core::alloc::Allocator>(&mut self, img_buf: &[u8; FOUR_BPP_BUF_SIZE]) {
         for grayscale in [8] {
             let mut pos: usize = 0;
             let mut buf: [u8; WIDTH / 4] = [0u8; WIDTH / 4];
@@ -341,7 +342,7 @@ impl EinkDisplay {
 
     fn write_4bpp_partialy_reverse_image<U: core::alloc::Allocator>(
         &mut self,
-        img_buf: &Vec<u8, U>,
+        img_buf: &[u8; FOUR_BPP_BUF_SIZE],
     ) {
         for grayscale in [8] {
             let mut pos: usize = 0;
@@ -804,10 +805,9 @@ fn open_4bpp_image<
     const MAX_DIRS: usize,
     const MAX_FILES: usize,
     const MAX_VOLUMES: usize,
-    U: core::alloc::Allocator,
 >(
     cur_dir: &mut Directory<D, T, MAX_DIRS, MAX_FILES, MAX_VOLUMES>,
-    img_buf: &mut Vec<u8, U>,
+    img_buf: &mut [u8; FOUR_BPP_BUF_SIZE],
     file_name: &str,
 ) -> Result<(), Error<SdCardError>>
 where
@@ -948,10 +948,7 @@ fn main() -> ! {
     */
 
     // too big for dram? so use psram(2M)
-    let mut img_buf_2: Vec<u8, _> = Vec::with_capacity_in(FOUR_BPP_BUF_SIZE, &esp_alloc::HEAP);
-    for _i in 0..FOUR_BPP_BUF_SIZE {
-        img_buf_2.push(0u8);
-    }
+    let mut img_buf_2: Box<[u8; FOUR_BPP_BUF_SIZE]> = Box::new([0u8; FOUR_BPP_BUF_SIZE]);
 
     /* get the values of dedicated GPIO from the CPU, not peripheral registers */
     for i in 0..8 {
@@ -1414,7 +1411,7 @@ fn main() -> ! {
         }
         file_name.clear();
         write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();
-        match open_4bpp_image(&mut cur_child_dir, &mut next_buf, &file_name) {
+        match open_4bpp_image(&mut cur_child_dir, next_buf, &file_name) {
             Ok(_) => {
                 //eink_display.write_4bpp_reverse_image(&pre_buf);
                 //eink_display.write_4bpp_partialy_reverse_image(&pre_buf);
@@ -1423,7 +1420,7 @@ fn main() -> ! {
                 eink_display.write_all_white();
                 eink_display.write_all_black();
                 //eink_display.write_4bpp_reverse_image(&next_buf);
-                eink_display.write_4bpp_image(&next_buf);
+                eink_display.write_4bpp_image(next_buf);
                 flash
                     .write(
                         flash_addr,
