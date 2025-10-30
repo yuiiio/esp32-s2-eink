@@ -5,7 +5,6 @@
 
 extern crate alloc;
 use alloc::string::String;
-use alloc::vec::Vec;
 use alloc::boxed::Box;
 
 use esp_alloc;
@@ -18,7 +17,7 @@ use esp_backtrace as _;
 use esp_hal::{
     analog::adc::{Adc, AdcConfig, Attenuation},
     delay::Delay,
-    gpio::{Io, Level, Output, OutputConfig},
+    gpio::{Level, Output, OutputConfig},
     main,
     otg_fs::{Usb, UsbBus},
     peripherals::{DEDICATED_GPIO, GPIO, IO_MUX, SYSTEM},
@@ -94,7 +93,7 @@ const DPORT_RST_EN_DEDICATED_GPIO: usize = 1 << 7;
 const HEIGHT: usize = 1072;
 const WIDTH: usize = 1448;
 
-const FOUR_BPP_BUF_SIZE: usize = WIDTH * HEIGHT * 2 / 8;
+const TWO_BPP_BUF_SIZE: usize = WIDTH * HEIGHT * 2 / 8;
 
 const BLACK_FOUR_PIXEL: u8 = 0b01010101;
 const WHITE_FOUR_PIXEL: u8 = 0b10101010;
@@ -160,7 +159,7 @@ impl EinkDisplay {
         self.ckv.set_high();
     }
 
-    fn write_2bpp_image(&mut self, img_buf: &[u8; FOUR_BPP_BUF_SIZE]) {
+    fn write_2bpp_image(&mut self, img_buf: &[u8; TWO_BPP_BUF_SIZE]) {
         for grayscale in [2, 1] {
             let mut pos: usize = 0;
             let mut buf: [u8; WIDTH / 4] = [0u8; WIDTH / 4];
@@ -217,189 +216,6 @@ impl EinkDisplay {
                     };
                     if (img_buf[pos] & 0b00000011) <= grayscale {
                         b ^= 0b00000011
-                    };
-                    pos += 1;
-                    buf[i] = b;
-                }
-                self.ckv.set_high();
-            }
-            self.xstl.set_low();
-            /* can write 4 pixel for onece */
-            for pos in 0..(WIDTH / 4) {
-                let four_pixels = buf[pos];
-                // write 8bit
-                unsafe {
-                    asm!("wur.gpio_out {0}", in(reg) four_pixels);
-                };
-                self.xcl.set_high();
-                self.xcl.set_low();
-            }
-            self.xstl.set_high();
-            self.xcl.set_high();
-            self.xcl.set_low();
-
-            self.xle.set_high();
-            self.xle.set_low();
-
-            self.ckv.set_low();
-            self.delay.delay_micros(1);
-            self.ckv.set_high();
-            self.end_frame();
-        }
-    }
-
-    fn write_4bpp_reverse_image<U: core::alloc::Allocator>(&mut self, img_buf: &[u8; FOUR_BPP_BUF_SIZE]) {
-        for grayscale in [8] {
-            let mut pos: usize = 0;
-            let mut buf: [u8; WIDTH / 4] = [0u8; WIDTH / 4];
-            self.start_frame();
-
-            for i in 0..(WIDTH / 4) {
-                let mut b: u8 = WHITE_FOUR_PIXEL; // white
-                if (img_buf[pos] >> 4) > grayscale {
-                    b ^= 0b11000000
-                }; //reverse => black
-                if (img_buf[pos] & 0x0f) > grayscale {
-                    b ^= 0b00110000
-                };
-                pos += 1;
-                if (img_buf[pos] >> 4) > grayscale {
-                    b ^= 0b00001100
-                };
-                if (img_buf[pos] & 0x0f) > grayscale {
-                    b ^= 0b00000011
-                };
-                pos += 1;
-                buf[i] = b;
-            }
-            for _line in 0..(HEIGHT - 1) {
-                self.xstl.set_low();
-                /* can write 4 pixel for onece */
-                for pos in 0..(WIDTH / 4) {
-                    let four_pixels = buf[pos];
-                    // write 8bit
-                    unsafe {
-                        asm!("wur.gpio_out {0}", in(reg) four_pixels);
-                    };
-                    self.xcl.set_high();
-                    self.xcl.set_low();
-                }
-                self.xstl.set_high();
-                self.xcl.set_high();
-                self.xcl.set_low();
-
-                self.xle.set_high();
-                self.xle.set_low();
-
-                self.ckv.set_low();
-                //self.delay.delay_micros(1);
-                for i in 0..(WIDTH / 4) {
-                    let mut b: u8 = WHITE_FOUR_PIXEL; // white
-                    if (img_buf[pos] >> 4) > grayscale {
-                        b ^= 0b11000000
-                    }; //reverse => black
-                    if (img_buf[pos] & 0x0f) > grayscale {
-                        b ^= 0b00110000
-                    };
-                    pos += 1;
-                    if (img_buf[pos] >> 4) > grayscale {
-                        b ^= 0b00001100
-                    };
-                    if (img_buf[pos] & 0x0f) > grayscale {
-                        b ^= 0b00000011
-                    };
-                    pos += 1;
-                    buf[i] = b;
-                }
-                self.ckv.set_high();
-            }
-            self.xstl.set_low();
-            /* can write 4 pixel for onece */
-            for pos in 0..(WIDTH / 4) {
-                let four_pixels = buf[pos];
-                // write 8bit
-                unsafe {
-                    asm!("wur.gpio_out {0}", in(reg) four_pixels);
-                };
-                self.xcl.set_high();
-                self.xcl.set_low();
-            }
-            self.xstl.set_high();
-            self.xcl.set_high();
-            self.xcl.set_low();
-
-            self.xle.set_high();
-            self.xle.set_low();
-
-            self.ckv.set_low();
-            self.delay.delay_micros(1);
-            self.ckv.set_high();
-            self.end_frame();
-        }
-    }
-
-    fn write_4bpp_partialy_reverse_image<U: core::alloc::Allocator>(
-        &mut self,
-        img_buf: &[u8; FOUR_BPP_BUF_SIZE],
-    ) {
-        for grayscale in [8] {
-            let mut pos: usize = 0;
-            let mut buf: [u8; WIDTH / 4] = [0u8; WIDTH / 4];
-            self.start_frame();
-
-            for i in 0..(WIDTH / 4) {
-                let mut b: u8 = NONE_FOUR_PIXEL;
-                if (img_buf[pos] >> 4) > grayscale {
-                    b ^= 0b01000000
-                }; //NONE => black
-                if (img_buf[pos] & 0x0f) > grayscale {
-                    b ^= 0b00010000
-                };
-                pos += 1;
-                if (img_buf[pos] >> 4) > grayscale {
-                    b ^= 0b00000100
-                };
-                if (img_buf[pos] & 0x0f) > grayscale {
-                    b ^= 0b00000001
-                };
-                pos += 1;
-                buf[i] = b;
-            }
-            for _line in 0..(HEIGHT - 1) {
-                self.xstl.set_low();
-                /* can write 4 pixel for onece */
-                for pos in 0..(WIDTH / 4) {
-                    let four_pixels = buf[pos];
-                    // write 8bit
-                    unsafe {
-                        asm!("wur.gpio_out {0}", in(reg) four_pixels);
-                    };
-                    self.xcl.set_high();
-                    self.xcl.set_low();
-                }
-                self.xstl.set_high();
-                self.xcl.set_high();
-                self.xcl.set_low();
-
-                self.xle.set_high();
-                self.xle.set_low();
-
-                self.ckv.set_low();
-                //self.delay.delay_micros(1);
-                for i in 0..(WIDTH / 4) {
-                    let mut b: u8 = NONE_FOUR_PIXEL;
-                    if (img_buf[pos] >> 4) > grayscale {
-                        b ^= 0b01000000
-                    }; //NONE => black
-                    if (img_buf[pos] & 0x0f) > grayscale {
-                        b ^= 0b00010000
-                    };
-                    pos += 1;
-                    if (img_buf[pos] >> 4) > grayscale {
-                        b ^= 0b00000100
-                    };
-                    if (img_buf[pos] & 0x0f) > grayscale {
-                        b ^= 0b00000001
                     };
                     pos += 1;
                     buf[i] = b;
@@ -489,59 +305,6 @@ impl EinkDisplay {
             }
             self.end_frame();
         }
-    }
-
-    fn write_all_black_white(&mut self) {
-        // black
-        let four_pixels: u8 = BLACK_FOUR_PIXEL;
-        unsafe {
-            asm!("wur.gpio_out {0}", in(reg) four_pixels);
-        }
-        self.start_frame();
-        for _line in 0..HEIGHT {
-            self.xstl.set_low();
-            /* can write 4 pixel for onece */
-            for _pos in 0..(WIDTH / 4) {
-                self.xcl.set_high();
-                self.xcl.set_low();
-            }
-            self.xstl.set_high();
-            self.xcl.set_high();
-            self.xcl.set_low();
-
-            self.xle.set_high();
-            self.xle.set_low();
-
-            self.ckv.set_low();
-            self.delay.delay_micros(1);
-            self.ckv.set_high();
-        }
-        self.end_frame();
-        // white
-        let four_pixels: u8 = WHITE_FOUR_PIXEL;
-        unsafe {
-            asm!("wur.gpio_out {0}", in(reg) four_pixels);
-        }
-        self.start_frame();
-        for _line in 0..HEIGHT {
-            self.xstl.set_low();
-            /* can write 4 pixel for onece */
-            for _pos in 0..(WIDTH / 4) {
-                self.xcl.set_high();
-                self.xcl.set_low();
-            }
-            self.xstl.set_high();
-            self.xcl.set_high();
-            self.xcl.set_low();
-
-            self.xle.set_high();
-            self.xle.set_low();
-
-            self.ckv.set_low();
-            self.delay.delay_micros(1);
-            self.ckv.set_high();
-        }
-        self.end_frame();
     }
 
     fn write_top_indicator(&mut self, first_commit: bool, status_var: u32, pre_status_var: u32) {
@@ -805,7 +568,7 @@ fn open_4bpp_image<
     const MAX_VOLUMES: usize,
 >(
     cur_dir: &mut Directory<D, T, MAX_DIRS, MAX_FILES, MAX_VOLUMES>,
-    img_buf: &mut [u8; FOUR_BPP_BUF_SIZE],
+    img_buf: &mut [u8; TWO_BPP_BUF_SIZE],
     file_name: &str,
 ) -> Result<(), Error<SdCardError>>
 where
@@ -946,7 +709,7 @@ fn main() -> ! {
     */
 
     // too big for dram? so use psram(2M)
-    let mut img_buf_2: Box<[u8; FOUR_BPP_BUF_SIZE]> = Box::new([0u8; FOUR_BPP_BUF_SIZE]);
+    let mut img_buf_2: Box<[u8; TWO_BPP_BUF_SIZE]> = Box::new([0u8; TWO_BPP_BUF_SIZE]);
 
     /* get the values of dedicated GPIO from the CPU, not peripheral registers */
     for i in 0..8 {
@@ -1192,7 +955,8 @@ fn main() -> ! {
             let top_left_pin_value = adc1.read_blocking(&mut touch_top);
 
             if top_left_pin_value > TOUCH_TOP_THRESHOLD {
-                eink_display.write_all_black_white();
+                eink_display.write_all_black();
+                eink_display.write_all_white();
             }
 
             if left_pin_value > TOUCH_LEFT_THRESHOLD {
@@ -1411,13 +1175,10 @@ fn main() -> ! {
         write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();
         match open_4bpp_image(&mut cur_child_dir, next_buf, &file_name) {
             Ok(_) => {
-                //eink_display.write_4bpp_reverse_image(&pre_buf);
-                //eink_display.write_4bpp_partialy_reverse_image(&pre_buf);
-                //eink_display.write_all_black_white();
                 eink_display.write_all_white();
                 eink_display.write_all_white();
                 eink_display.write_all_black();
-                //eink_display.write_4bpp_reverse_image(&next_buf);
+
                 eink_display.write_2bpp_image(next_buf);
                 flash
                     .write(

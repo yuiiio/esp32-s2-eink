@@ -30,8 +30,11 @@ fn main() {
     println!("{:?}", bytes);
     println!("{}", bytes.len());
     */
-    let image_size = 1448*1072*4/8;
+    // let image_size = 1448*1072*4/8;//4bpp
     //println!("image(w*h*4bit) is {} bytes", image_size);
+
+    let image_size = 1448*1072*2/8;//2bpp
+    println!("image(w*h*2bit) is {} bytes", image_size);
     let idf_pointer: u32 =
         ((bytes[7] as u32) << 24) +
         ((bytes[6] as u32) << 16) +
