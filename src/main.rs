@@ -1047,17 +1047,43 @@ fn main() -> ! {
                     touch_out.set_low();
                     let top_left_pin_value = adc1.read_blocking(&mut touch_top);
 
+                    let mut indicator_refresh = false;
                     const SKIP_PAGE: u16 = 1;
                     if left_pin_value > TOUCH_LEFT_THRESHOLD {
                         if cur_page < SKIP_PAGE {
-                            cur_page = cur_dir_files_len - 1; //circling
+                            // open pre chapter dir
+                            if cur_dir == 1 {
+                                cur_dir = root_dir_directories_len; //circling
+                            } else {
+                                cur_dir = cur_dir - 1;
+                            }
+                            dir_name.clear();
+                            write!(&mut dir_name, "{0: >04}", cur_dir).unwrap();
+                            cur_child_dir.close().unwrap();
+                            cur_child_dir = root_dir.open_dir(dir_name.as_str()).unwrap();
+
+                            cur_dir_files_len = 0;
+                            cur_child_dir
+                                .iterate_dir(|_entry| {
+                                    cur_dir_files_len += 1;
+                                })
+                            .unwrap();
+                            cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
+                            cur_dir_files_len = if cur_dir_files_len > 999 {
+                                999
+                            } else {
+                                cur_dir_files_len
+                            };
+                            cur_page = cur_dir_files_len - 1; // pre chapter dir's last
+                            indicator_refresh = true;
+
                         } else {
                             cur_page = cur_page - SKIP_PAGE;
                         }
                         let bottom_indicator_pos_current: u32 = HEIGHT as u32
                             - ((cur_page as u32 * HEIGHT as u32) / cur_dir_files_len as u32);
                         eink_display.write_bottom_indicator(
-                            false,
+                            indicator_refresh,
                             bottom_indicator_pos_current,
                             bottom_pre_status_var,
                         );
@@ -1065,14 +1091,38 @@ fn main() -> ! {
                     }
                     if right_pin_value > TOUCH_RIGHT_THRESHOLD {
                         if cur_page > (cur_dir_files_len - 1) - SKIP_PAGE {
-                            cur_page = 0; //circling
+                            // open next chapter dir
+                            if cur_dir == root_dir_directories_len {
+                                cur_dir = 1; //circling
+                            } else {
+                                cur_dir = cur_dir + 1;
+                            }
+                            dir_name.clear();
+                            write!(&mut dir_name, "{0: >04}", cur_dir).unwrap();
+                            cur_child_dir.close().unwrap();
+                            cur_child_dir = root_dir.open_dir(dir_name.as_str()).unwrap();
+
+                            cur_dir_files_len = 0;
+                            cur_child_dir
+                                .iterate_dir(|_entry| {
+                                    cur_dir_files_len += 1;
+                                })
+                            .unwrap();
+                            cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
+                            cur_dir_files_len = if cur_dir_files_len > 999 {
+                                999
+                            } else {
+                                cur_dir_files_len
+                            };
+                            cur_page = 0; // next chapter dir's first
+                            indicator_refresh = true;
                         } else {
                             cur_page = cur_page + SKIP_PAGE;
                         }
                         let bottom_indicator_pos_current: u32 = HEIGHT as u32
                             - ((cur_page as u32 * HEIGHT as u32) / cur_dir_files_len as u32);
                         eink_display.write_bottom_indicator(
-                            false,
+                            indicator_refresh,
                             bottom_indicator_pos_current,
                             bottom_pre_status_var,
                         );
