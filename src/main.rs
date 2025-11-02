@@ -54,6 +54,7 @@ fn init_psram_heap(start: *mut u8, size: usize) {
     }
 }
 
+/*
 static mut EP_MEMORY: [u32; 1024] = [0; 1024];
 
 struct SerialWrapper<'b, B: usb_device::class_prelude::UsbBus>(SerialPort<'b, B>);
@@ -63,6 +64,8 @@ impl<B: usb_device::class_prelude::UsbBus> core::fmt::Write for SerialWrapper<'_
         Ok(())
     }
 }
+*/
+
 struct FakeTimesource {}
 
 impl embedded_sdmmc::TimeSource for FakeTimesource {
@@ -549,6 +552,7 @@ fn main() -> ! {
     let mut led = Output::new(peripherals.GPIO15, Level::High, OutputConfig::default());
 
     /*usb serial debug*/
+    /*
     let usb = Usb::new(peripherals.USB0, peripherals.GPIO20, peripherals.GPIO19);
     let usb_bus = UsbBus::new(usb, unsafe { &mut *addr_of_mut!(EP_MEMORY) });
 
@@ -559,7 +563,6 @@ fn main() -> ! {
         .device_class(USB_CLASS_CDC)
         .build();
 
-    /*
     /* debug */
     'outer: loop {
         if !usb_dev.poll(&mut [&mut serial.0]) {
@@ -735,9 +738,12 @@ fn main() -> ! {
 
     let mut dir_name = String::with_capacity(5); //xxxx
     let mut file_name = String::with_capacity(8); //xxx.tif
+    
+    const MAX_ROOT_DIRS: u16 = 9999;
+    const MAX_CHILD_FILES: u16 = 999;
 
-    root_dir_directories_len = if root_dir_directories_len > 9999 {
-        9999
+    root_dir_directories_len = if root_dir_directories_len > MAX_ROOT_DIRS {
+        MAX_ROOT_DIRS
     } else {
         root_dir_directories_len
     };
@@ -771,8 +777,8 @@ fn main() -> ! {
         })
         .unwrap();
     cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
-    cur_dir_files_len = if cur_dir_files_len > 999 {
-        999
+    cur_dir_files_len = if cur_dir_files_len > MAX_CHILD_FILES {
+        MAX_CHILD_FILES
     } else {
         cur_dir_files_len
     };
@@ -894,8 +900,8 @@ fn main() -> ! {
                         })
                         .unwrap();
                     cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
-                    cur_dir_files_len = if cur_dir_files_len > 999 {
-                        999
+                    cur_dir_files_len = if cur_dir_files_len > MAX_CHILD_FILES {
+                        MAX_CHILD_FILES
                     } else {
                         cur_dir_files_len
                     };
@@ -925,8 +931,8 @@ fn main() -> ! {
                         })
                         .unwrap();
                     cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
-                    cur_dir_files_len = if cur_dir_files_len > 999 {
-                        999
+                    cur_dir_files_len = if cur_dir_files_len > MAX_CHILD_FILES {
+                        MAX_CHILD_FILES
                     } else {
                         cur_dir_files_len
                     };
@@ -985,8 +991,8 @@ fn main() -> ! {
                                 })
                             .unwrap();
                             cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
-                            cur_dir_files_len = if cur_dir_files_len > 999 {
-                                999
+                            cur_dir_files_len = if cur_dir_files_len > MAX_CHILD_FILES {
+                                MAX_CHILD_FILES
                             } else {
                                 cur_dir_files_len
                             };
@@ -1025,8 +1031,8 @@ fn main() -> ! {
                                 })
                             .unwrap();
                             cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
-                            cur_dir_files_len = if cur_dir_files_len > 999 {
-                                999
+                            cur_dir_files_len = if cur_dir_files_len > MAX_CHILD_FILES {
+                                MAX_CHILD_FILES
                             } else {
                                 cur_dir_files_len
                             };
@@ -1055,7 +1061,7 @@ fn main() -> ! {
                         let mut top_pre_status_var = top_indicator_pos_current;
 
                         delay.delay_millis(500_u32);
-                        'chaptor_indicator: loop {
+                        '_chaptor_indicator: loop {
                             touch_out.set_high();
                             delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
                             touch_out.set_low();
@@ -1071,7 +1077,7 @@ fn main() -> ! {
                             touch_out.set_high();
                             delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
                             touch_out.set_low();
-                            let top_left_pin_value = adc1.read_blocking(&mut touch_top);
+                            let _top_left_pin_value = adc1.read_blocking(&mut touch_top);
 
                             if left_pin_value > TOUCH_LEFT_THRESHOLD {
                                 if cur_dir == 1 {
@@ -1118,8 +1124,8 @@ fn main() -> ! {
                                     })
                                     .unwrap();
                                 cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
-                                cur_dir_files_len = if cur_dir_files_len > 999 {
-                                    999
+                                cur_dir_files_len = if cur_dir_files_len > MAX_CHILD_FILES {
+                                    MAX_CHILD_FILES
                                 } else {
                                     cur_dir_files_len
                                 };
