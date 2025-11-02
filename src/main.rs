@@ -102,30 +102,33 @@ const BLACK_FOUR_PIXEL: u8 = 0b01010101;
 const WHITE_FOUR_PIXEL: u8 = 0b10101010;
 const NONE_FOUR_PIXEL: u8 = 0b00000000;
 
+// waveform for grayscale
+const WAVEFORM: [[u8; 4]; 3] = [ 
+    [0b01, 0b01, 0b01, 0b10], 
+    [0b01, 0b10, 0b10, 0b10], 
+    [0b01, 0b01, 0b10, 0b10], 
+];
+
 // put LUT on SRAM
 #[link_section = ".dram0.data"]
 static LUT: [[u8; 256]; 3] = {
     let mut table = [[0u8; 256]; 3];
-    let mut g = 0;
-    while g < 3 {
-        let grayscale = g as u8;
+    let mut state = 0;
+    while state < 3 {
         let mut i = 0;
         while i < 256 {
-            let mut b = WHITE_FOUR_PIXEL;
             let src = i as u8;
             let mut j = 0;
             while j < 4 {
                 let shift = (3 - j) * 2;
                 let mask = 0b11 << shift;
-                if (src & mask) <= (grayscale << shift) {
-                    b ^= mask;
-                }
+                let form = WAVEFORM[state as usize][((src & mask) >> shift) as usize];
+                table[state as usize][i] |=  form << shift;
                 j += 1;
             }
-            table[g as usize][i as usize] = b;
             i += 1;
         }
-        g += 1;
+        state += 1;
     }
     table
 };
@@ -189,7 +192,7 @@ impl EinkDisplay {
     }
 
     fn write_2bpp_image(&mut self, img_buf: &[u8; TWO_BPP_BUF_SIZE]) {
-        for grayscale in [2, 1] {
+        for state in 0..3 {
             let mut buf_pos: usize = 0;
             self.start_frame();
 
@@ -197,7 +200,7 @@ impl EinkDisplay {
                 self.xstl.set_low();
                 /* can write 4 pixel for onece */
                 for _i in 0..(WIDTH / 4) {
-                    let b = LUT[grayscale as usize][img_buf[buf_pos] as usize];
+                    let b = LUT[state as usize][img_buf[buf_pos] as usize];
                     buf_pos += 1;
                     // write 8bit
                     unsafe {
