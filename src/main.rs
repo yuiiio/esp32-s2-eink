@@ -102,6 +102,8 @@ const BLACK_FOUR_PIXEL: u8 = 0b01010101;
 const WHITE_FOUR_PIXEL: u8 = 0b10101010;
 const NONE_FOUR_PIXEL: u8 = 0b00000000;
 
+// put LUT on SRAM
+#[link_section = ".dram0.data"]
 static LUT: [[u8; 256]; 3] = {
     let mut table = [[0u8; 256]; 3];
     let mut g = 0;
