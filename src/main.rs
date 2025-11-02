@@ -192,7 +192,7 @@ impl EinkDisplay {
     }
 
     fn write_2bpp_image(&mut self, img_buf: &[u8; TWO_BPP_BUF_SIZE]) {
-        for state in 0..3 {
+        for state in 0..2 {
             let mut buf_pos: usize = 0;
             self.start_frame();
 
