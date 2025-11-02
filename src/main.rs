@@ -54,7 +54,6 @@ fn init_psram_heap(start: *mut u8, size: usize) {
     }
 }
 
-/*
 static mut EP_MEMORY: [u32; 1024] = [0; 1024];
 
 struct SerialWrapper<'b, B: usb_device::class_prelude::UsbBus>(SerialPort<'b, B>);
@@ -64,7 +63,6 @@ impl<B: usb_device::class_prelude::UsbBus> core::fmt::Write for SerialWrapper<'_
         Ok(())
     }
 }
-*/
 
 struct FakeTimesource {}
 
@@ -552,7 +550,6 @@ fn main() -> ! {
     let mut led = Output::new(peripherals.GPIO15, Level::High, OutputConfig::default());
 
     /*usb serial debug*/
-    /*
     let usb = Usb::new(peripherals.USB0, peripherals.GPIO20, peripherals.GPIO19);
     let usb_bus = UsbBus::new(usb, unsafe { &mut *addr_of_mut!(EP_MEMORY) });
 
@@ -601,7 +598,6 @@ fn main() -> ! {
     }
 
     writeln!(serial, "\nSuccess serialWrapper test\n").unwrap();
-    */
 
     /* flash rom */
     let mut bytes = [0u8; 4];
@@ -831,7 +827,6 @@ fn main() -> ! {
     }
     */
 
-    /*
     // benchmark
     write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();
     match open_2bpp_image(&mut cur_child_dir, &mut img_buf, &file_name) {
@@ -854,7 +849,6 @@ fn main() -> ! {
         }
         Err(_) => {}
     }
-    */
 
     led.set_low();
     loop {
