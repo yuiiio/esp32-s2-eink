@@ -112,7 +112,6 @@ struct EinkDisplay {
 }
 
 impl EinkDisplay {
-    #[inline(always)]
     fn start_frame(&mut self) {
         self.xoe.set_high();
         self.mode1.set_high();
@@ -123,7 +122,6 @@ impl EinkDisplay {
         self.spv.set_high();
     }
 
-    #[inline(always)]
     fn end_frame(&mut self) {
         self.mode1.set_low();
         self.xoe.set_low();
@@ -134,7 +132,7 @@ impl EinkDisplay {
     // [0, 1] Draw black
     // [1, 0] Draw white
     // [1, 1] No action
-    #[inline(always)]
+    #[allow(dead_code)]
     fn write_row(&mut self, row_data: &[u8; WIDTH / 4]) {
         self.xstl.set_low();
         /* can write 4 pixel for onece */
@@ -247,64 +245,30 @@ impl EinkDisplay {
         }
     }
 
-    fn write_all_black(&mut self) {
-        for _cycle in 0..1 {
-            // black
-            let four_pixels: u8 = BLACK_FOUR_PIXEL;
-            unsafe {
-                asm!("wur.gpio_out {0}", in(reg) four_pixels);
-            }
-            self.start_frame();
-            for _line in 0..HEIGHT {
-                self.xstl.set_low();
-                /* can write 4 pixel for onece */
-                for _pos in 0..(WIDTH / 4) {
-                    self.xcl.set_high();
-                    self.xcl.set_low();
-                }
-                self.xstl.set_high();
+    fn write_all(&mut self, solid_pixel: u8) {
+        unsafe {
+            asm!("wur.gpio_out {0}", in(reg) solid_pixel);
+        }
+        self.start_frame();
+        for _line in 0..HEIGHT {
+            self.xstl.set_low();
+            /* can write 4 pixel for onece */
+            for _pos in 0..(WIDTH / 4) {
                 self.xcl.set_high();
                 self.xcl.set_low();
-
-                self.xle.set_high();
-                self.xle.set_low();
-
-                self.ckv.set_low();
-                self.delay.delay_micros(1);
-                self.ckv.set_high();
             }
-            self.end_frame();
+            self.xstl.set_high();
+            self.xcl.set_high();
+            self.xcl.set_low();
+
+            self.xle.set_high();
+            self.xle.set_low();
+
+            self.ckv.set_low();
+            self.delay.delay_micros(1);
+            self.ckv.set_high();
         }
-    }
-
-    fn write_all_white(&mut self) {
-        for _cycle in 0..1 {
-            // white
-            let four_pixels: u8 = WHITE_FOUR_PIXEL;
-            unsafe {
-                asm!("wur.gpio_out {0}", in(reg) four_pixels);
-            }
-            self.start_frame();
-            for _line in 0..HEIGHT {
-                self.xstl.set_low();
-                /* can write 4 pixel for onece */
-                for _pos in 0..(WIDTH / 4) {
-                    self.xcl.set_high();
-                    self.xcl.set_low();
-                }
-                self.xstl.set_high();
-                self.xcl.set_high();
-                self.xcl.set_low();
-
-                self.xle.set_high();
-                self.xle.set_low();
-
-                self.ckv.set_low();
-                self.delay.delay_micros(1);
-                self.ckv.set_high();
-            }
-            self.end_frame();
-        }
+        self.end_frame();
     }
 
     fn write_top_indicator(&mut self, first_commit: bool, status_var: u32, pre_status_var: u32) {
@@ -312,120 +276,110 @@ impl EinkDisplay {
         const TOP_INDICATOR_WIDTH_DIV_4: usize = 100 / 4;
         const SPLIT_WIDTH: usize = 4 / 4;
         const BAR_WIDTH: u32 = 20;
-        for _cycle in 0..1 {
-            self.start_frame();
-            for line in 0..HEIGHT {
-                self.xstl.set_low();
-                if first_commit {
-                    if status_var.abs_diff(line as u32) <= BAR_WIDTH {
-                        //black button
-                        let four_pixels: u8 = BLACK_FOUR_PIXEL;
-                        unsafe {
-                            asm!("wur.gpio_out {0}", in(reg) four_pixels);
-                        }
-                        for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
-                            // draw bar
-                            self.xcl.set_high();
-                            self.xcl.set_low();
-                        }
-                    } else {
-                        //white backgruond
-                        let four_pixels: u8 = WHITE_FOUR_PIXEL;
-                        unsafe {
-                            asm!("wur.gpio_out {0}", in(reg) four_pixels);
-                        }
-                        for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
-                            // draw bar
-                            self.xcl.set_high();
-                            self.xcl.set_low();
-                        }
-                    }
-                    //black
-                    let four_pixels: u8 = BLACK_FOUR_PIXEL;
+        self.start_frame();
+        for line in 0..HEIGHT {
+            self.xstl.set_low();
+            if first_commit {
+                if status_var.abs_diff(line as u32) <= BAR_WIDTH {
+                    //black button
                     unsafe {
-                        asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                        asm!("wur.gpio_out {0}", in(reg) BLACK_FOUR_PIXEL);
                     }
-                    for _i in 0..SPLIT_WIDTH {
-                        // draw split bar
+                    for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
+                        // draw bar
                         self.xcl.set_high();
                         self.xcl.set_low();
                     }
                 } else {
-                    if status_var.abs_diff(line as u32) <= BAR_WIDTH {
-                        if pre_status_var.abs_diff(line as u32) > BAR_WIDTH {
-                            //black button
-                            let four_pixels: u8 = BLACK_FOUR_PIXEL;
-                            unsafe {
-                                asm!("wur.gpio_out {0}", in(reg) four_pixels);
-                            }
-                            for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
-                                // draw bar
-                                self.xcl.set_high();
-                                self.xcl.set_low();
-                            }
-                        } else {
-                            //none
-                            let four_pixels: u8 = 0b00000000;
-                            unsafe {
-                                asm!("wur.gpio_out {0}", in(reg) four_pixels);
-                            }
-                            for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
-                                // draw bar
-                                self.xcl.set_high();
-                                self.xcl.set_low();
-                            }
-                        }
-                    } else {
-                        if pre_status_var.abs_diff(line as u32) <= BAR_WIDTH {
-                            //white background
-                            let four_pixels: u8 = WHITE_FOUR_PIXEL;
-                            unsafe {
-                                asm!("wur.gpio_out {0}", in(reg) four_pixels);
-                            }
-                            for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
-                                // clear pre bar
-                                self.xcl.set_high();
-                                self.xcl.set_low();
-                            }
-                        } else {
-                            //none
-                            let four_pixels: u8 = 0b00000000;
-                            unsafe {
-                                asm!("wur.gpio_out {0}", in(reg) four_pixels);
-                            }
-                            for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
-                                // draw bar
-                                self.xcl.set_high();
-                                self.xcl.set_low();
-                            }
-                        }
+                    //white backgruond
+                    unsafe {
+                        asm!("wur.gpio_out {0}", in(reg) WHITE_FOUR_PIXEL);
+                    }
+                    for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
+                        // draw bar
+                        self.xcl.set_high();
+                        self.xcl.set_low();
                     }
                 }
-                // none
-                let four_pixels: u8 = 0b00000000;
+                //black
                 unsafe {
-                    asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                    asm!("wur.gpio_out {0}", in(reg) BLACK_FOUR_PIXEL);
                 }
-                /* can write 4 pixel for onece */
-                for _i in 0..((WIDTH / 4) - TOP_INDICATOR_WIDTH_DIV_4) {
-                    //skip not changed area
+                for _i in 0..SPLIT_WIDTH {
+                    // draw split bar
                     self.xcl.set_high();
                     self.xcl.set_low();
                 }
-
-                self.xstl.set_high();
+            } else {
+                if status_var.abs_diff(line as u32) <= BAR_WIDTH {
+                    if pre_status_var.abs_diff(line as u32) > BAR_WIDTH {
+                        //black button
+                        unsafe {
+                            asm!("wur.gpio_out {0}", in(reg) BLACK_FOUR_PIXEL);
+                        }
+                        for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
+                            // draw bar
+                            self.xcl.set_high();
+                            self.xcl.set_low();
+                        }
+                    } else {
+                        //none
+                        unsafe {
+                            asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL);
+                        }
+                        for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
+                            // draw bar
+                            self.xcl.set_high();
+                            self.xcl.set_low();
+                        }
+                    }
+                } else {
+                    if pre_status_var.abs_diff(line as u32) <= BAR_WIDTH {
+                        //white background
+                        unsafe {
+                            asm!("wur.gpio_out {0}", in(reg) WHITE_FOUR_PIXEL);
+                        }
+                        for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
+                            // clear pre bar
+                            self.xcl.set_high();
+                            self.xcl.set_low();
+                        }
+                    } else {
+                        //none
+                        unsafe {
+                            asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL);
+                        }
+                        for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
+                            // draw bar
+                            self.xcl.set_high();
+                            self.xcl.set_low();
+                        }
+                    }
+                }
+            }
+            // none
+            unsafe {
+                asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL);
+            }
+            /* can write 4 pixel for onece */
+            for _i in 0..((WIDTH / 4) - TOP_INDICATOR_WIDTH_DIV_4) {
+                //skip not changed area
                 self.xcl.set_high();
                 self.xcl.set_low();
-
-                self.xle.set_high();
-                self.xle.set_low();
-
-                self.ckv.set_low();
-                self.delay.delay_micros(1);
-                self.ckv.set_high();
             }
-            self.end_frame();
+
+            self.xstl.set_high();
+            self.xcl.set_high();
+            self.xcl.set_low();
+
+            self.xle.set_high();
+            self.xle.set_low();
+
+            self.ckv.set_low();
+            self.delay.delay_micros(1);
+            self.ckv.set_high();
         }
+        self.end_frame();
     }
 
     fn write_bottom_indicator(&mut self, first_commit: bool, status_var: u32, pre_status_var: u32) {
@@ -433,38 +387,66 @@ impl EinkDisplay {
         const BOTTOM_INDICATOR_WIDTH_DIV_4: usize = 100 / 4;
         const SPLIT_WIDTH: usize = 4 / 4;
         const BAR_WIDTH: u32 = 20;
-        for _cycle in 0..1 {
-            self.start_frame();
-            for line in 0..HEIGHT {
-                // none
-                let four_pixels: u8 = 0b00000000;
+        self.start_frame();
+        for line in 0..HEIGHT {
+            // none
+            unsafe {
+                asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL);
+            }
+            self.xstl.set_low();
+            /* can write 4 pixel for onece */
+            for _i in 0..((WIDTH / 4) - BOTTOM_INDICATOR_WIDTH_DIV_4) {
+                //skip not changed area
+                self.xcl.set_high();
+                self.xcl.set_low();
+            }
+            if first_commit {
+                //black
                 unsafe {
-                    asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                    asm!("wur.gpio_out {0}", in(reg) BLACK_FOUR_PIXEL);
                 }
-                self.xstl.set_low();
-                /* can write 4 pixel for onece */
-                for _i in 0..((WIDTH / 4) - BOTTOM_INDICATOR_WIDTH_DIV_4) {
-                    //skip not changed area
+                self.delay.delay_micros(1);
+                for _i in 0..SPLIT_WIDTH {
+                    // draw split bar
                     self.xcl.set_high();
                     self.xcl.set_low();
                 }
-                if first_commit {
-                    //black
-                    let four_pixels: u8 = BLACK_FOUR_PIXEL;
+                if status_var.abs_diff(line as u32) <= BAR_WIDTH {
+                    //black button
                     unsafe {
-                        asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                        asm!("wur.gpio_out {0}", in(reg) BLACK_FOUR_PIXEL);
                     }
-                    self.delay.delay_micros(1);
-                    for _i in 0..SPLIT_WIDTH {
-                        // draw split bar
+                    for _i in SPLIT_WIDTH..BOTTOM_INDICATOR_WIDTH_DIV_4 {
+                        // draw bar
                         self.xcl.set_high();
                         self.xcl.set_low();
                     }
-                    if status_var.abs_diff(line as u32) <= BAR_WIDTH {
+                } else {
+                    //white backgruond
+                    unsafe {
+                        asm!("wur.gpio_out {0}", in(reg) WHITE_FOUR_PIXEL);
+                    }
+                    for _i in SPLIT_WIDTH..BOTTOM_INDICATOR_WIDTH_DIV_4 {
+                        // draw bar
+                        self.xcl.set_high();
+                        self.xcl.set_low();
+                    }
+                }
+            } else {
+                // none
+                unsafe {
+                    asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL);
+                }
+                for _i in 0..SPLIT_WIDTH {
+                    // skip split bar
+                    self.xcl.set_high();
+                    self.xcl.set_low();
+                }
+                if status_var.abs_diff(line as u32) <= BAR_WIDTH {
+                    if pre_status_var.abs_diff(line as u32) > BAR_WIDTH {
                         //black button
-                        let four_pixels: u8 = BLACK_FOUR_PIXEL;
                         unsafe {
-                            asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                            asm!("wur.gpio_out {0}", in(reg) BLACK_FOUR_PIXEL);
                         }
                         for _i in SPLIT_WIDTH..BOTTOM_INDICATOR_WIDTH_DIV_4 {
                             // draw bar
@@ -472,10 +454,9 @@ impl EinkDisplay {
                             self.xcl.set_low();
                         }
                     } else {
-                        //white backgruond
-                        let four_pixels: u8 = WHITE_FOUR_PIXEL;
+                        //none
                         unsafe {
-                            asm!("wur.gpio_out {0}", in(reg) four_pixels);
+                            asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL);
                         }
                         for _i in SPLIT_WIDTH..BOTTOM_INDICATOR_WIDTH_DIV_4 {
                             // draw bar
@@ -484,83 +465,45 @@ impl EinkDisplay {
                         }
                     }
                 } else {
-                    // none
-                    let four_pixels: u8 = 0b00000000;
-                    unsafe {
-                        asm!("wur.gpio_out {0}", in(reg) four_pixels);
-                    }
-                    for _i in 0..SPLIT_WIDTH {
-                        // skip split bar
-                        self.xcl.set_high();
-                        self.xcl.set_low();
-                    }
-                    if status_var.abs_diff(line as u32) <= BAR_WIDTH {
-                        if pre_status_var.abs_diff(line as u32) > BAR_WIDTH {
-                            //black button
-                            let four_pixels: u8 = BLACK_FOUR_PIXEL;
-                            unsafe {
-                                asm!("wur.gpio_out {0}", in(reg) four_pixels);
-                            }
-                            for _i in SPLIT_WIDTH..BOTTOM_INDICATOR_WIDTH_DIV_4 {
-                                // draw bar
-                                self.xcl.set_high();
-                                self.xcl.set_low();
-                            }
-                        } else {
-                            //none
-                            let four_pixels: u8 = 0b00000000;
-                            unsafe {
-                                asm!("wur.gpio_out {0}", in(reg) four_pixels);
-                            }
-                            for _i in SPLIT_WIDTH..BOTTOM_INDICATOR_WIDTH_DIV_4 {
-                                // draw bar
-                                self.xcl.set_high();
-                                self.xcl.set_low();
-                            }
+                    if pre_status_var.abs_diff(line as u32) <= BAR_WIDTH {
+                        //white background
+                        unsafe {
+                            asm!("wur.gpio_out {0}", in(reg) WHITE_FOUR_PIXEL);
+                        }
+                        for _i in SPLIT_WIDTH..BOTTOM_INDICATOR_WIDTH_DIV_4 {
+                            // clear pre bar
+                            self.xcl.set_high();
+                            self.xcl.set_low();
                         }
                     } else {
-                        if pre_status_var.abs_diff(line as u32) <= BAR_WIDTH {
-                            //white background
-                            let four_pixels: u8 = WHITE_FOUR_PIXEL;
-                            unsafe {
-                                asm!("wur.gpio_out {0}", in(reg) four_pixels);
-                            }
-                            for _i in SPLIT_WIDTH..BOTTOM_INDICATOR_WIDTH_DIV_4 {
-                                // clear pre bar
-                                self.xcl.set_high();
-                                self.xcl.set_low();
-                            }
-                        } else {
-                            //none
-                            let four_pixels: u8 = 0b00000000;
-                            unsafe {
-                                asm!("wur.gpio_out {0}", in(reg) four_pixels);
-                            }
-                            for _i in SPLIT_WIDTH..BOTTOM_INDICATOR_WIDTH_DIV_4 {
-                                // draw bar
-                                self.xcl.set_high();
-                                self.xcl.set_low();
-                            }
+                        //none
+                        unsafe {
+                            asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL);
+                        }
+                        for _i in SPLIT_WIDTH..BOTTOM_INDICATOR_WIDTH_DIV_4 {
+                            // draw bar
+                            self.xcl.set_high();
+                            self.xcl.set_low();
                         }
                     }
                 }
-                self.xstl.set_high();
-                self.xcl.set_high();
-                self.xcl.set_low();
-
-                self.xle.set_high();
-                self.xle.set_low();
-
-                self.ckv.set_low();
-                self.delay.delay_micros(1);
-                self.ckv.set_high();
             }
-            self.end_frame();
+            self.xstl.set_high();
+            self.xcl.set_high();
+            self.xcl.set_low();
+
+            self.xle.set_high();
+            self.xle.set_low();
+
+            self.ckv.set_low();
+            self.delay.delay_micros(1);
+            self.ckv.set_high();
         }
+        self.end_frame();
     }
 }
 
-fn open_4bpp_image<
+fn open_2bpp_image<
     D: embedded_sdmmc::BlockDevice,
     T: embedded_sdmmc::TimeSource,
     const MAX_DIRS: usize,
@@ -701,15 +644,8 @@ fn main() -> ! {
 
     let volume_manager = VolumeManager::new(sdcard, FakeTimesource {});
 
-    /*
-    let mut img_buf_1: Vec<u8, _> = Vec::with_capacity_in(FOUR_BPP_BUF_SIZE, &esp_alloc::HEAP);
-    for _i in 0..FOUR_BPP_BUF_SIZE {
-        img_buf_1.push(0u8);
-    }
-    */
-
     // too big for dram? so use psram(2M)
-    let mut img_buf_2: Box<[u8; TWO_BPP_BUF_SIZE]> = Box::new([0u8; TWO_BPP_BUF_SIZE]);
+    let mut img_buf: Box<[u8; TWO_BPP_BUF_SIZE]> = Box::new([0u8; TWO_BPP_BUF_SIZE]);
 
     /* get the values of dedicated GPIO from the CPU, not peripheral registers */
     for i in 0..8 {
@@ -751,30 +687,11 @@ fn main() -> ! {
 
     // IO_MUX_MCU_SEL
     // hm RegisterBlock in esp32s2 pac doesnot impl gpio(num)
+    for i in 0..8 {
     unsafe { &*IO_MUX::PTR }
-        .gpio(18)
+        .gpio(eink_data_bus_ios[i] % 32)
         .modify(|_, w| unsafe { w.mcu_sel().bits(1) }); // set to Function 1
-    unsafe { &*IO_MUX::PTR }
-        .gpio(21)
-        .modify(|_, w| unsafe { w.mcu_sel().bits(1) });
-    unsafe { &*IO_MUX::PTR }
-        .gpio(16)
-        .modify(|_, w| unsafe { w.mcu_sel().bits(1) });
-    unsafe { &*IO_MUX::PTR }
-        .gpio(17)
-        .modify(|_, w| unsafe { w.mcu_sel().bits(1) });
-    unsafe { &*IO_MUX::PTR }
-        .gpio(7)
-        .modify(|_, w| unsafe { w.mcu_sel().bits(1) });
-    unsafe { &*IO_MUX::PTR }
-        .gpio(9)
-        .modify(|_, w| unsafe { w.mcu_sel().bits(1) });
-    unsafe { &*IO_MUX::PTR }
-        .gpio(10)
-        .modify(|_, w| unsafe { w.mcu_sel().bits(1) });
-    unsafe { &*IO_MUX::PTR }
-        .gpio(13)
-        .modify(|_, w| unsafe { w.mcu_sel().bits(1) });
+    }
 
     let mode1 = Output::new(peripherals.GPIO11, Level::High, OutputConfig::default());
     let ckv = Output::new(peripherals.GPIO14, Level::High, OutputConfig::default());
@@ -795,15 +712,15 @@ fn main() -> ! {
         xstl,
         delay,
     };
-    eink_display.write_all_white();
-    eink_display.write_all_black();
+    eink_display.write_all(WHITE_FOUR_PIXEL);
+    eink_display.write_all(BLACK_FOUR_PIXEL);
 
     let volume0 = volume_manager
         .open_volume(VolumeIdx(0))
         .expect("failed to open volume");
     let root_dir = volume0.open_root_dir().expect("failed to open volume");
 
-    //let mut root_dir_child_dirs = Vec::with_capacity_in(9999, &PSRAM_ALLOCATOR); //DirEntry is 32 bytes // ShortFileName is [u8; 11]
+    //DirEntry is 32 bytes // ShortFileName is [u8; 11]
     let mut root_dir_directories_len: u16 = 0;
     root_dir
         .iterate_dir(|entry| {
@@ -860,9 +777,6 @@ fn main() -> ! {
         cur_dir_files_len
     };
 
-    //let pre_buf = &mut img_buf_1;
-    let mut next_buf = &mut img_buf_2;
-
     let mut cur_page: u16 = if last_opend_page_num > cur_dir_files_len {
         0
     } else {
@@ -914,12 +828,14 @@ fn main() -> ! {
     /*
     // benchmark
     write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();
-    match open_4bpp_image(&mut cur_child_dir, &mut img_buf, &file_name) {
+    match open_2bpp_image(&mut cur_child_dir, &mut img_buf, &file_name) {
         Ok(_) => {
             let t1 = esp_hal::time::Instant::now();
-            eink_display.write_4bpp_reverse_image(&img_buf);
-            //eink_display.write_all_black_white();
-            eink_display.write_4bpp_image(&img_buf);
+            eink_display.write_all(WHITE_FOUR_PIXEL);
+            eink_display.write_all(WHITE_FOUR_PIXEL);
+            eink_display.write_all(BLACK_FOUR_PIXEL);
+
+            eink_display.write_2bpp_image(&img_buf);
             let t2 = esp_hal::time::Instant::now();
 
             let elapsed = t2 - t1;
@@ -955,8 +871,8 @@ fn main() -> ! {
             let top_left_pin_value = adc1.read_blocking(&mut touch_top);
 
             if top_left_pin_value > TOUCH_TOP_THRESHOLD {
-                eink_display.write_all_black();
-                eink_display.write_all_white();
+                eink_display.write_all(BLACK_FOUR_PIXEL);
+                eink_display.write_all(WHITE_FOUR_PIXEL);
             }
 
             if left_pin_value > TOUCH_LEFT_THRESHOLD {
@@ -1223,13 +1139,13 @@ fn main() -> ! {
         }
         file_name.clear();
         write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();
-        match open_4bpp_image(&mut cur_child_dir, next_buf, &file_name) {
+        match open_2bpp_image(&mut cur_child_dir, &mut img_buf, &file_name) {
             Ok(_) => {
-                eink_display.write_all_white();
-                eink_display.write_all_white();
-                eink_display.write_all_black();
+                eink_display.write_all(WHITE_FOUR_PIXEL);
+                eink_display.write_all(WHITE_FOUR_PIXEL);
+                eink_display.write_all(BLACK_FOUR_PIXEL);
 
-                eink_display.write_2bpp_image(next_buf);
+                eink_display.write_2bpp_image(&img_buf);
                 flash
                     .write(
                         flash_addr,
@@ -1239,8 +1155,8 @@ fn main() -> ! {
             }
             Err(_error) => {
                 /* not found file */
-                eink_display.write_all_white();
-                eink_display.write_all_black();
+                eink_display.write_all(WHITE_FOUR_PIXEL);
+                eink_display.write_all(BLACK_FOUR_PIXEL);
             }
         };
         //core::mem::swap(pre_buf, next_buf);
