@@ -104,9 +104,9 @@ const NONE_FOUR_PIXEL: u8 = 0b00000000;
 
 // waveform for grayscale
 const WAVEFORM: [[u8; 4]; 3] = [ 
-    [0b00, 0b10, 0b01, 0b10], 
-    [0b01, 0b10, 0b00, 0b10], 
+    [0b01, 0b10, 0b01, 0b10], 
     [0b01, 0b01, 0b10, 0b10], 
+    [0b01, 0b00, 0b00, 0b10], 
 ];
 
 // put LUT on SRAM
