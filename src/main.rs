@@ -687,8 +687,8 @@ fn main() -> ! {
     // too big for dram? so use psram(2M)
     let mut img_buf: Box<[u8; TWO_BPP_BUF_SIZE]> = Box::new([0u8; TWO_BPP_BUF_SIZE]);
     let mut img_buf_2: Box<[u8; TWO_BPP_BUF_SIZE]> = Box::new([0u8; TWO_BPP_BUF_SIZE]);
-    let next_buf = &mut img_buf;
-    let pre_buf = &mut img_buf_2;
+    let mut next_buf = &mut img_buf;
+    let mut pre_buf = &mut img_buf_2;
 
 
     /* get the values of dedicated GPIO from the CPU, not peripheral registers */
@@ -875,14 +875,19 @@ fn main() -> ! {
     /*
     // benchmark
     write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();
-    match open_2bpp_image(&mut cur_child_dir, &mut img_buf, &file_name) {
+    match open_2bpp_image(&mut cur_child_dir, next_buf, &file_name) {
         Ok(_) => {
             let t1 = esp_hal::time::Instant::now();
+            /*
             eink_display.write_all(WHITE_FOUR_PIXEL);
             eink_display.write_all(WHITE_FOUR_PIXEL);
             eink_display.write_all(BLACK_FOUR_PIXEL);
+            */
+            eink_display.write_2bpp_image_rev(pre_buf);
 
-            eink_display.write_2bpp_image(&img_buf);
+            core::mem::swap(&mut pre_buf, &mut next_buf);
+
+            eink_display.write_2bpp_image(pre_buf);
             let t2 = esp_hal::time::Instant::now();
 
             let elapsed = t2 - t1;
@@ -1214,6 +1219,6 @@ fn main() -> ! {
                 eink_display.write_all(BLACK_FOUR_PIXEL);
             }
         };
-        core::mem::swap(pre_buf, next_buf);
+        core::mem::swap(&mut pre_buf, &mut next_buf);
     }
 }
