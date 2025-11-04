@@ -133,6 +133,36 @@ static LUT: [[u8; 256]; 3] = {
     table
 };
 
+const REVERSE_WAVEFORM: [[u8; 4]; 3] = [ 
+    [0b10, 0b10, 0b01, 0b01], 
+    [0b10, 0b10, 0b01, 0b01], 
+    [0b10, 0b10, 0b01, 0b01], 
+];
+
+// put LUT on SRAM
+#[link_section = ".dram0.data"]
+static REVERSE_LUT: [[u8; 256]; 3] = {
+    let mut table = [[0u8; 256]; 3];
+    let mut state = 0;
+    while state < 3 {
+        let mut i = 0;
+        while i < 256 {
+            let src = i as u8;
+            let mut j = 0;
+            while j < 4 {
+                let shift = (3 - j) * 2;
+                let mask = 0b11 << shift;
+                let form = REVERSE_WAVEFORM[state as usize][((src & mask) >> shift) as usize];
+                table[state as usize][i] |=  form << shift;
+                j += 1;
+            }
+            i += 1;
+        }
+        state += 1;
+    }
+    table
+};
+
 struct EinkDisplay {
     pub mode1: Output<'static>,
     pub ckv: Output<'static>,
@@ -201,6 +231,39 @@ impl EinkDisplay {
                 /* can write 4 pixel for onece */
                 for _i in 0..(WIDTH / 4) {
                     let b = LUT[state as usize][img_buf[buf_pos] as usize];
+                    buf_pos += 1;
+                    // write 8bit
+                    unsafe {
+                        asm!("wur.gpio_out {0}", in(reg) b);
+                    };
+                    self.xcl.set_high();
+                    self.xcl.set_low();
+                }
+                self.xstl.set_high();
+                self.xcl.set_high();
+                self.xcl.set_low();
+
+                self.xle.set_high();
+                self.xle.set_low();
+
+                self.ckv.set_low();
+                self.delay.delay_micros(1);
+                self.ckv.set_high();
+            }
+            self.end_frame();
+        }
+    }
+
+    fn write_2bpp_image_rev(&mut self, img_buf: &[u8; TWO_BPP_BUF_SIZE]) {
+        for state in 0..1 {
+            let mut buf_pos: usize = 0;
+            self.start_frame();
+
+            for _line in 0..HEIGHT {
+                self.xstl.set_low();
+                /* can write 4 pixel for onece */
+                for _i in 0..(WIDTH / 4) {
+                    let b = REVERSE_LUT[state as usize][img_buf[buf_pos] as usize];
                     buf_pos += 1;
                     // write 8bit
                     unsafe {
@@ -625,6 +688,7 @@ fn main() -> ! {
 
     // too big for dram? so use psram(2M)
     let mut img_buf: Box<[u8; TWO_BPP_BUF_SIZE]> = Box::new([0u8; TWO_BPP_BUF_SIZE]);
+    let mut img_buf_2: Box<[u8; TWO_BPP_BUF_SIZE]> = Box::new([0u8; TWO_BPP_BUF_SIZE]);
 
     /* get the values of dedicated GPIO from the CPU, not peripheral registers */
     for i in 0..8 {
@@ -836,6 +900,9 @@ fn main() -> ! {
         Err(_) => {}
     }
     */
+
+    let next_buf = &mut img_buf;
+    let pre_buf = &mut img_buf_2;
 
     led.set_low();
     loop {
@@ -1126,13 +1193,16 @@ fn main() -> ! {
         }
         file_name.clear();
         write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();
-        match open_2bpp_image(&mut cur_child_dir, &mut img_buf, &file_name) {
+        match open_2bpp_image(&mut cur_child_dir, next_buf, &file_name) {
             Ok(_) => {
+                /*
                 eink_display.write_all(WHITE_FOUR_PIXEL);
                 eink_display.write_all(WHITE_FOUR_PIXEL);
                 eink_display.write_all(BLACK_FOUR_PIXEL);
+                */
+                eink_display.write_2bpp_image_rev(pre_buf);
 
-                eink_display.write_2bpp_image(&img_buf);
+                eink_display.write_2bpp_image(next_buf);
                 flash
                     .write(
                         flash_addr,
@@ -1146,6 +1216,6 @@ fn main() -> ! {
                 eink_display.write_all(BLACK_FOUR_PIXEL);
             }
         };
-        //core::mem::swap(pre_buf, next_buf);
+        core::mem::swap(pre_buf, next_buf);
     }
 }
