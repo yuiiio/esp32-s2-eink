@@ -103,18 +103,17 @@ const WHITE_FOUR_PIXEL: u8 = 0b10101010;
 const NONE_FOUR_PIXEL: u8 = 0b00000000;
 
 // waveform for grayscale
-const WAVEFORM: [[u8; 4]; 3] = [ 
+const WAVEFORM: [[u8; 4]; 2] = [ 
     [0b01, 0b10, 0b01, 0b10], 
     [0b01, 0b01, 0b10, 0b10], 
-    [0b01, 0b00, 0b00, 0b10], 
 ];
 
 // put LUT on SRAM
 #[link_section = ".dram0.data"]
-static LUT: [[u8; 256]; 3] = {
-    let mut table = [[0u8; 256]; 3];
+static LUT: [[u8; 256]; 2] = {
+    let mut table = [[0u8; 256]; 2];
     let mut state = 0;
-    while state < 3 {
+    while state < 2 {
         let mut i = 0;
         while i < 256 {
             let src = i as u8;
@@ -133,18 +132,17 @@ static LUT: [[u8; 256]; 3] = {
     table
 };
 
-const REVERSE_WAVEFORM: [[u8; 4]; 3] = [ 
-    [0b10, 0b10, 0b01, 0b01], 
+const REVERSE_WAVEFORM: [[u8; 4]; 2] = [ 
     [0b10, 0b10, 0b01, 0b01], 
     [0b10, 0b10, 0b01, 0b01], 
 ];
 
 // put LUT on SRAM
 #[link_section = ".dram0.data"]
-static REVERSE_LUT: [[u8; 256]; 3] = {
-    let mut table = [[0u8; 256]; 3];
+static REVERSE_LUT: [[u8; 256]; 2] = {
+    let mut table = [[0u8; 256]; 2];
     let mut state = 0;
-    while state < 3 {
+    while state < 2 {
         let mut i = 0;
         while i < 256 {
             let src = i as u8;
@@ -689,6 +687,9 @@ fn main() -> ! {
     // too big for dram? so use psram(2M)
     let mut img_buf: Box<[u8; TWO_BPP_BUF_SIZE]> = Box::new([0u8; TWO_BPP_BUF_SIZE]);
     let mut img_buf_2: Box<[u8; TWO_BPP_BUF_SIZE]> = Box::new([0u8; TWO_BPP_BUF_SIZE]);
+    let next_buf = &mut img_buf;
+    let pre_buf = &mut img_buf_2;
+
 
     /* get the values of dedicated GPIO from the CPU, not peripheral registers */
     for i in 0..8 {
@@ -900,9 +901,6 @@ fn main() -> ! {
         Err(_) => {}
     }
     */
-
-    let next_buf = &mut img_buf;
-    let pre_buf = &mut img_buf_2;
 
     led.set_low();
     loop {
