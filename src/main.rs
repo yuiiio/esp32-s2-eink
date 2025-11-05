@@ -133,8 +133,8 @@ static LUT: [[u8; 256]; 2] = {
 };
 
 const REVERSE_WAVEFORM: [[u8; 4]; 2] = [ 
-    [0b10, 0b10, 0b01, 0b01], 
-    [0b10, 0b10, 0b01, 0b01], 
+    [0b10, 0b10, 0b00, 0b00], 
+    [0b10, 0b10, 0b00, 0b00], 
 ];
 
 // put LUT on SRAM
@@ -253,7 +253,7 @@ impl EinkDisplay {
     }
 
     fn write_2bpp_image_rev(&mut self, img_buf: &[u8; TWO_BPP_BUF_SIZE]) {
-        for state in 0..1 {
+        for state in 0..2 {
             let mut buf_pos: usize = 0;
             self.start_frame();
 
