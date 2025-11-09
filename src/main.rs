@@ -162,14 +162,14 @@ static REVERSE_LUT: [[u8; 256]; 2] = {
 };
 
 struct EinkDisplay {
-    pub mode1: Output<'static>,
-    pub ckv: Output<'static>,
-    pub spv: Output<'static>,
+    pub mode1: Output<'static>, // GDOE
+    pub ckv: Output<'static>,   // GDCLK
+    pub spv: Output<'static>,   // GDSP
 
-    pub xcl: Output<'static>,
-    pub xle: Output<'static>,
-    pub xoe: Output<'static>,
-    pub xstl: Output<'static>,
+    pub xcl: Output<'static>,   // SDCLK
+    pub xle: Output<'static>,   // SDLE
+    pub xoe: Output<'static>,   // SDOE
+    pub xstl: Output<'static>,  // SDCE
     pub delay: Delay,
 }
 
@@ -185,8 +185,11 @@ impl EinkDisplay {
     }
 
     fn end_frame(&mut self) {
-        self.mode1.set_low();
         self.xoe.set_low();
+        self.mode1.set_low();
+        self.ckv.set_high();
+        self.delay.delay_micros(1);
+        self.ckv.set_low();
     }
 
     // 1pixel 2 bit, so *2 data
@@ -197,6 +200,7 @@ impl EinkDisplay {
     #[allow(dead_code)]
     fn write_row(&mut self, row_data: &[u8; WIDTH / 4]) {
         self.xstl.set_low();
+        self.ckv.set_high();
         /* can write 4 pixel for onece */
         for pos in 0..(WIDTH / 4) {
             let four_pixels = row_data[pos];
@@ -207,16 +211,11 @@ impl EinkDisplay {
             self.xcl.set_high();
             self.xcl.set_low();
         }
+        self.ckv.set_low();
         self.xstl.set_high();
-        self.xcl.set_high();
-        self.xcl.set_low();
 
         self.xle.set_high();
         self.xle.set_low();
-
-        self.ckv.set_low();
-        self.delay.delay_micros(1);
-        self.ckv.set_high();
     }
 
     fn write_2bpp_image(&mut self, img_buf: &[u8; TWO_BPP_BUF_SIZE]) {
@@ -226,6 +225,7 @@ impl EinkDisplay {
 
             for _line in 0..HEIGHT {
                 self.xstl.set_low();
+                self.ckv.set_high();
                 /* can write 4 pixel for onece */
                 for _i in 0..(WIDTH / 4) {
                     let b = LUT[state as usize][img_buf[buf_pos] as usize];
@@ -237,16 +237,11 @@ impl EinkDisplay {
                     self.xcl.set_high();
                     self.xcl.set_low();
                 }
+                self.ckv.set_low();
                 self.xstl.set_high();
-                self.xcl.set_high();
-                self.xcl.set_low();
 
                 self.xle.set_high();
                 self.xle.set_low();
-
-                self.ckv.set_low();
-                self.delay.delay_micros(1);
-                self.ckv.set_high();
             }
             self.end_frame();
         }
@@ -259,6 +254,7 @@ impl EinkDisplay {
 
             for _line in 0..HEIGHT {
                 self.xstl.set_low();
+                self.ckv.set_high();
                 /* can write 4 pixel for onece */
                 for _i in 0..(WIDTH / 4) {
                     let b = REVERSE_LUT[state as usize][img_buf[buf_pos] as usize];
@@ -270,16 +266,11 @@ impl EinkDisplay {
                     self.xcl.set_high();
                     self.xcl.set_low();
                 }
+                self.ckv.set_low();
                 self.xstl.set_high();
-                self.xcl.set_high();
-                self.xcl.set_low();
 
                 self.xle.set_high();
                 self.xle.set_low();
-
-                self.ckv.set_low();
-                self.delay.delay_micros(1);
-                self.ckv.set_high();
             }
             self.end_frame();
         }
@@ -292,21 +283,17 @@ impl EinkDisplay {
         self.start_frame();
         for _line in 0..HEIGHT {
             self.xstl.set_low();
+            self.ckv.set_high();
             /* can write 4 pixel for onece */
             for _pos in 0..(WIDTH / 4) {
                 self.xcl.set_high();
                 self.xcl.set_low();
             }
+            self.ckv.set_low();
             self.xstl.set_high();
-            self.xcl.set_high();
-            self.xcl.set_low();
 
             self.xle.set_high();
             self.xle.set_low();
-
-            self.ckv.set_low();
-            self.delay.delay_micros(1);
-            self.ckv.set_high();
         }
         self.end_frame();
     }
@@ -319,6 +306,7 @@ impl EinkDisplay {
         self.start_frame();
         for line in 0..HEIGHT {
             self.xstl.set_low();
+            self.ckv.set_high();
             if first_commit {
                 if status_var.abs_diff(line as u32) <= BAR_WIDTH {
                     //black button
@@ -419,16 +407,11 @@ impl EinkDisplay {
                 self.xcl.set_low();
             }
 
+            self.ckv.set_low();
             self.xstl.set_high();
-            self.xcl.set_high();
-            self.xcl.set_low();
 
             self.xle.set_high();
             self.xle.set_low();
-
-            self.ckv.set_low();
-            self.delay.delay_micros(1);
-            self.ckv.set_high();
         }
         self.end_frame();
     }
@@ -445,6 +428,7 @@ impl EinkDisplay {
                 asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL);
             }
             self.xstl.set_low();
+            self.ckv.set_high();
             /* can write 4 pixel for onece */
             for _i in 0..((WIDTH / 4) - BOTTOM_INDICATOR_WIDTH_DIV_4) {
                 //skip not changed area
@@ -539,16 +523,11 @@ impl EinkDisplay {
                     }
                 }
             }
+            self.ckv.set_low();
             self.xstl.set_high();
-            self.xcl.set_high();
-            self.xcl.set_low();
 
             self.xle.set_high();
             self.xle.set_low();
-
-            self.ckv.set_low();
-            self.delay.delay_micros(1);
-            self.ckv.set_high();
         }
         self.end_frame();
     }
@@ -749,11 +728,11 @@ fn main() -> ! {
     }
 
     let mode1 = Output::new(peripherals.GPIO11, Level::High, OutputConfig::default());
-    let ckv = Output::new(peripherals.GPIO14, Level::High, OutputConfig::default());
+    let ckv = Output::new(peripherals.GPIO14, Level::Low, OutputConfig::default());
     let spv = Output::new(peripherals.GPIO12, Level::High, OutputConfig::default());
 
-    let xcl = Output::new(peripherals.GPIO39, Level::High, OutputConfig::default());
-    let xle = Output::new(peripherals.GPIO40, Level::High, OutputConfig::default());
+    let xcl = Output::new(peripherals.GPIO39, Level::Low, OutputConfig::default());
+    let xle = Output::new(peripherals.GPIO40, Level::Low, OutputConfig::default());
     let xoe = Output::new(peripherals.GPIO38, Level::High, OutputConfig::default());
     let xstl = Output::new(peripherals.GPIO33, Level::High, OutputConfig::default());
 
