@@ -328,6 +328,7 @@ impl EinkDisplay {
                     for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
                         // draw bar
                         self.xcl.set_high();
+                        self.delay.delay_micros(1);
                         self.xcl.set_low();
                     }
                 } else {
@@ -338,6 +339,7 @@ impl EinkDisplay {
                     for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
                         // draw bar
                         self.xcl.set_high();
+                        self.delay.delay_micros(1);
                         self.xcl.set_low();
                     }
                 }
@@ -348,6 +350,7 @@ impl EinkDisplay {
                 for _i in 0..SPLIT_WIDTH {
                     // draw split bar
                     self.xcl.set_high();
+                    self.delay.delay_micros(1);
                     self.xcl.set_low();
                 }
             } else {
@@ -395,6 +398,14 @@ impl EinkDisplay {
                             self.xcl.set_low();
                         }
                     }
+                }
+                unsafe {
+                    asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL);
+                }
+                for _i in 0..SPLIT_WIDTH {
+                    // draw split bar(none)
+                    self.xcl.set_high();
+                    self.xcl.set_low();
                 }
             }
             // none
