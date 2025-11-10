@@ -104,8 +104,8 @@ const NONE_FOUR_PIXEL: u8 = 0b00000000;
 
 // waveform for grayscale
 const WAVEFORM: [[u8; 4]; 2] = [ 
-    [0b00, 0b00, 0b01, 0b10], 
-    [0b01, 0b00, 0b10, 0b10], 
+    [0b01, 0b10, 0b01, 0b10], 
+    [0b01, 0b01, 0b10, 0b10], 
 ];
 
 // put LUT on SRAM
@@ -868,8 +868,12 @@ fn main() -> ! {
     match open_2bpp_image(&mut cur_child_dir, next_buf, &file_name) {
         Ok(_) => {
             let t1 = esp_hal::time::Instant::now();
-            eink_display.write_2bpp_image_rev(pre_buf);
+            /*
+            eink_display.write_all(WHITE_FOUR_PIXEL);
+            eink_display.write_all(WHITE_FOUR_PIXEL);
             eink_display.write_all(BLACK_FOUR_PIXEL);
+            */
+            eink_display.write_2bpp_image_rev(pre_buf);
 
             core::mem::swap(&mut pre_buf, &mut next_buf);
 
@@ -1184,8 +1188,12 @@ fn main() -> ! {
         write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();
         match open_2bpp_image(&mut cur_child_dir, next_buf, &file_name) {
             Ok(_) => {
-                eink_display.write_2bpp_image_rev(pre_buf);
+                /*
+                eink_display.write_all(WHITE_FOUR_PIXEL);
+                eink_display.write_all(WHITE_FOUR_PIXEL);
                 eink_display.write_all(BLACK_FOUR_PIXEL);
+                */
+                eink_display.write_2bpp_image_rev(pre_buf);
 
                 eink_display.write_2bpp_image(next_buf);
                 flash
