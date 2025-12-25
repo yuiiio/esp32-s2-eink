@@ -116,13 +116,13 @@ fn main() -> ! {
     /* enable dedicated gpio peripheral */
     SYSTEM::regs()
         .cpu_peri_clk_en()
-        .modify(|_, w| w.clk_en_dedicated_gpio().bit(true));
+        .modify(|_, w| w.dedicated_gpio_clk_en().bit(true));
     SYSTEM::regs()
         .cpu_peri_rst_en()
-        .modify(|_, w| w.rst_en_dedicated_gpio().bit(true));
+        .modify(|_, w| w.dedicated_gpio_rst().bit(true));
     SYSTEM::regs()
         .cpu_peri_rst_en()
-        .modify(|_, w| w.rst_en_dedicated_gpio().bit(false));
+        .modify(|_, w| w.dedicated_gpio_rst().bit(false));
 
     let delay = Delay::new();
 
