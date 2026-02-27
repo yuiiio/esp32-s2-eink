@@ -17,7 +17,7 @@ use esp_backtrace as _;
 use esp_hal::{
     analog::adc::{Adc, AdcConfig, Attenuation},
     delay::Delay,
-    gpio::{Level, Output, OutputConfig},
+    gpio::{Level, Output, OutputConfig, AnyPin, Pin},
     main,
     otg_fs::{Usb, UsbBus},
     peripherals::{DEDICATED_GPIO, GPIO, IO_MUX, SYSTEM},
@@ -171,6 +171,7 @@ struct EinkDisplay {
     pub xoe: Output<'static>,
     pub xstl: Output<'static>,
     pub delay: Delay,
+    _pin_guard: [AnyPin<'static>; 8],
 }
 
 impl EinkDisplay {
@@ -715,6 +716,16 @@ fn main() -> ! {
     // pro_alonegpio_out7: (242)
     // GPIO_FUNCx_OUT_SEL_CFG
     let eink_data_bus_ios: [usize; 8] = [18, 21, 16, 17, 7, 9, 10, 13];
+    let _pin_guard: [AnyPin; 8] = [ // cannot be use a macro?
+        peripherals.GPIO18.degrade(),
+        peripherals.GPIO21.degrade(),
+        peripherals.GPIO16.degrade(),
+        peripherals.GPIO17.degrade(),
+        peripherals.GPIO7.degrade(),
+        peripherals.GPIO9.degrade(),
+        peripherals.GPIO10.degrade(),
+        peripherals.GPIO13.degrade(),
+    ];
     for i in 0..8 {
         unsafe { &*GPIO::PTR }
             .func_out_sel_cfg(eink_data_bus_ios[i])
@@ -766,6 +777,7 @@ fn main() -> ! {
         xoe,
         xstl,
         delay,
+        _pin_guard,
     };
     eink_display.write_all(WHITE_FOUR_PIXEL);
     eink_display.write_all(BLACK_FOUR_PIXEL);
