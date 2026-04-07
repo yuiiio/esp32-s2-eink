@@ -42,6 +42,9 @@ use embedded_sdmmc::{
 mod eink;
 use eink::{EinkDisplay, TWO_BPP_BUF_SIZE, HEIGHT, BLACK_FOUR_PIXEL, WHITE_FOUR_PIXEL};
 
+mod touch;
+use touch::{TouchInput, TouchThresholds};
+
 //static PSRAM_ALLOCATOR: esp_alloc::EspHeap = esp_alloc::EspHeap::empty();
 // seems conflicts with global allocator maybe current esp-hal issue.
 
@@ -382,7 +385,7 @@ fn main() -> ! {
     };
 
     /*self cpu impl touch pad*/
-    let mut touch_out = Output::new(peripherals.GPIO1, Level::Low, OutputConfig::default());
+    let touch_out = Output::new(peripherals.GPIO1, Level::Low, OutputConfig::default());
 
     let mut adc1_config = AdcConfig::new();
     let mut touch_left = adc1_config.enable_pin(peripherals.GPIO2, Attenuation::_11dB);
@@ -391,11 +394,12 @@ fn main() -> ! {
     let mut touch_top = adc1_config.enable_pin(peripherals.GPIO5, Attenuation::_11dB);
     let mut adc1 = Adc::new(peripherals.ADC1, adc1_config);
 
-    const TOUCH_LEFT_THRESHOLD: u16 = 2950;
-    const TOUCH_RIGHT_THRESHOLD: u16 = 2950;
-    const TOUCH_CENTER_THRESHOLD: u16 = 2950;
-    const TOUCH_TOP_THRESHOLD: u16 = 3100;
-    const TOUCH_PULSE_HIGH_DELAY_NS: u32 = 400000;
+    let mut touch_input = TouchInput::new(
+        touch_out,
+        delay,
+        TouchInput::DEFAULT_PULSE_DELAY_NS,
+        TouchThresholds::default_thresholds(),
+    );
 
     /*
     const RECORD_LEN: usize = 20;
@@ -461,29 +465,20 @@ fn main() -> ! {
     led.set_low();
     loop {
         'inner: loop {
-            touch_out.set_high();
-            delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
-            touch_out.set_low();
-            let left_pin_value = adc1.read_blocking(&mut touch_left);
-            touch_out.set_high();
-            delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
-            touch_out.set_low();
-            let right_pin_value = adc1.read_blocking(&mut touch_right);
-            touch_out.set_high();
-            delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
-            touch_out.set_low();
-            let center_pin_value = adc1.read_blocking(&mut touch_center);
-            touch_out.set_high();
-            delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
-            touch_out.set_low();
-            let top_left_pin_value = adc1.read_blocking(&mut touch_top);
+            let touch = touch_input.read_all(
+                &mut adc1,
+                &mut touch_left,
+                &mut touch_right,
+                &mut touch_center,
+                &mut touch_top,
+            );
 
-            if top_left_pin_value > TOUCH_TOP_THRESHOLD {
+            if touch.top {
                 eink_display.write_all(BLACK_FOUR_PIXEL);
                 eink_display.write_all(WHITE_FOUR_PIXEL);
             }
 
-            if left_pin_value > TOUCH_LEFT_THRESHOLD {
+            if touch.left {
                 if cur_page == 0 {
                     if cur_dir == 1 {
                         cur_dir = root_dir_directories_len; // circling
@@ -514,7 +509,7 @@ fn main() -> ! {
                 }
                 break 'inner;
             }
-            if right_pin_value > TOUCH_RIGHT_THRESHOLD {
+            if touch.right {
                 if cur_page == (cur_dir_files_len - 1) {
                     if cur_dir == root_dir_directories_len {
                         cur_dir = 1; // circling
@@ -545,35 +540,26 @@ fn main() -> ! {
                 }
                 break 'inner;
             }
-            if center_pin_value > TOUCH_CENTER_THRESHOLD {
+            if touch.center {
                 let bottom_indicator_pos_current: u32 =
                     HEIGHT as u32 - ((cur_page as u32 * HEIGHT as u32) / cur_dir_files_len as u32);
                 eink_display.write_bottom_indicator(true, bottom_indicator_pos_current, 0);
                 let mut bottom_pre_status_var = bottom_indicator_pos_current;
 
-                delay.delay_millis(500u32);
+                touch_input.delay().delay_millis(500u32);
 
                 '_page_indicator: loop {
-                    touch_out.set_high();
-                    delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
-                    touch_out.set_low();
-                    let left_pin_value = adc1.read_blocking(&mut touch_left);
-                    touch_out.set_high();
-                    delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
-                    touch_out.set_low();
-                    let right_pin_value = adc1.read_blocking(&mut touch_right);
-                    touch_out.set_high();
-                    delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
-                    touch_out.set_low();
-                    let center_pin_value = adc1.read_blocking(&mut touch_center);
-                    touch_out.set_high();
-                    delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
-                    touch_out.set_low();
-                    let top_left_pin_value = adc1.read_blocking(&mut touch_top);
+                    let touch = touch_input.read_all(
+                        &mut adc1,
+                        &mut touch_left,
+                        &mut touch_right,
+                        &mut touch_center,
+                        &mut touch_top,
+                    );
 
                     let mut indicator_refresh = false;
                     const SKIP_PAGE: u16 = 1;
-                    if left_pin_value > TOUCH_LEFT_THRESHOLD {
+                    if touch.left {
                         if cur_page < SKIP_PAGE {
                             // open pre chapter dir
                             if cur_dir == 1 {
@@ -613,7 +599,7 @@ fn main() -> ! {
                         );
                         bottom_pre_status_var = bottom_indicator_pos_current;
                     }
-                    if right_pin_value > TOUCH_RIGHT_THRESHOLD {
+                    if touch.right {
                         if cur_page > (cur_dir_files_len - 1) - SKIP_PAGE {
                             // open next chapter dir
                             if cur_dir == root_dir_directories_len {
@@ -652,36 +638,27 @@ fn main() -> ! {
                         );
                         bottom_pre_status_var = bottom_indicator_pos_current;
                     }
-                    if center_pin_value > TOUCH_CENTER_THRESHOLD {
+                    if touch.center {
                         break 'inner;
                     }
 
-                    if top_left_pin_value > TOUCH_TOP_THRESHOLD {
+                    if touch.top {
                         let top_indicator_pos_current: u32 = HEIGHT as u32
                             - ((cur_dir as u32 * HEIGHT as u32) / root_dir_directories_len as u32);
                         eink_display.write_top_indicator(true, top_indicator_pos_current, 0);
                         let mut top_pre_status_var = top_indicator_pos_current;
 
-                        delay.delay_millis(500_u32);
+                        touch_input.delay().delay_millis(500_u32);
                         '_chaptor_indicator: loop {
-                            touch_out.set_high();
-                            delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
-                            touch_out.set_low();
-                            let left_pin_value = adc1.read_blocking(&mut touch_left);
-                            touch_out.set_high();
-                            delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
-                            touch_out.set_low();
-                            let right_pin_value = adc1.read_blocking(&mut touch_right);
-                            touch_out.set_high();
-                            delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
-                            touch_out.set_low();
-                            let center_pin_value = adc1.read_blocking(&mut touch_center);
-                            touch_out.set_high();
-                            delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
-                            touch_out.set_low();
-                            let _top_left_pin_value = adc1.read_blocking(&mut touch_top);
+                            let touch = touch_input.read_all(
+                                &mut adc1,
+                                &mut touch_left,
+                                &mut touch_right,
+                                &mut touch_center,
+                                &mut touch_top,
+                            );
 
-                            if left_pin_value > TOUCH_LEFT_THRESHOLD {
+                            if touch.left {
                                 if cur_dir == 1 {
                                     cur_dir = root_dir_directories_len; //circling
                                 } else {
@@ -697,7 +674,7 @@ fn main() -> ! {
                                 );
                                 top_pre_status_var = top_indicator_pos_current;
                             }
-                            if right_pin_value > TOUCH_RIGHT_THRESHOLD {
+                            if touch.right {
                                 if cur_dir == root_dir_directories_len {
                                     cur_dir = 1; //circling
                                 } else {
@@ -713,7 +690,7 @@ fn main() -> ! {
                                 );
                                 top_pre_status_var = top_indicator_pos_current;
                             }
-                            if center_pin_value > TOUCH_CENTER_THRESHOLD {
+                            if touch.center {
                                 dir_name.clear();
                                 write!(&mut dir_name, "{0: >04}", cur_dir).unwrap();
                                 cur_child_dir.close().unwrap();
