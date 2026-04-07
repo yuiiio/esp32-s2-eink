@@ -297,6 +297,9 @@ fn main() -> ! {
     let mut next_buf = &mut img_buf;
     let mut pre_buf = &mut img_buf_2;
 
+    // Prefetch state: (dir, page) of prefetched data in next_buf
+    let mut prefetched: Option<(u16, u16)> = None;
+
 
     /* get the values of dedicated GPIO from the CPU, not peripheral registers */
     for i in 0..8 {
@@ -697,31 +700,71 @@ fn main() -> ! {
                 }
             }
         }
-        file_name.clear();
-        write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();
-        match open_2bpp_image(&mut cur_child_dir, next_buf, &file_name) {
-            Ok(_) => {
-                /*
-                eink_display.write_all(WHITE_FOUR_PIXEL);
-                eink_display.write_all(WHITE_FOUR_PIXEL);
-                eink_display.write_all(BLACK_FOUR_PIXEL);
-                */
-                eink_display.write_2bpp_image_rev(pre_buf);
+        // Check if prefetched data matches current request
+        let use_prefetch = prefetched == Some((cur_dir, cur_page));
 
-                eink_display.write_2bpp_image(next_buf);
-                flash
-                    .write(
-                        flash_addr,
-                        &(((cur_dir as u32) << 16) + (cur_page as u32)).to_be_bytes(),
-                    )
-                    .unwrap();
-            }
-            Err(_error) => {
-                /* not found file */
-                eink_display.write_all(WHITE_FOUR_PIXEL);
-                eink_display.write_all(BLACK_FOUR_PIXEL);
-            }
-        };
+        if use_prefetch {
+            // Prefetched data is already in next_buf, skip reading
+            eink_display.write_2bpp_image_rev(pre_buf);
+            eink_display.write_2bpp_image(next_buf);
+            flash
+                .write(
+                    flash_addr,
+                    &(((cur_dir as u32) << 16) + (cur_page as u32)).to_be_bytes(),
+                )
+                .unwrap();
+        } else {
+            // Normal read
+            file_name.clear();
+            write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();
+            match open_2bpp_image(&mut cur_child_dir, next_buf, &file_name) {
+                Ok(_) => {
+                    eink_display.write_2bpp_image_rev(pre_buf);
+                    eink_display.write_2bpp_image(next_buf);
+                    flash
+                        .write(
+                            flash_addr,
+                            &(((cur_dir as u32) << 16) + (cur_page as u32)).to_be_bytes(),
+                        )
+                        .unwrap();
+                }
+                Err(_error) => {
+                    /* not found file */
+                    eink_display.write_all(WHITE_FOUR_PIXEL);
+                    eink_display.write_all(BLACK_FOUR_PIXEL);
+                    prefetched = None;
+                    continue;
+                }
+            };
+        }
+
         core::mem::swap(&mut pre_buf, &mut next_buf);
+
+        // Prefetch next page into next_buf (which is now empty after swap)
+        let (prefetch_dir, prefetch_page) = if cur_page < cur_dir_files_len - 1 {
+            // Next page in same directory
+            (cur_dir, cur_page + 1)
+        } else if cur_dir < root_dir_directories_len {
+            // First page of next directory
+            (cur_dir + 1, 0)
+        } else {
+            // Wrap to first directory
+            (1, 0)
+        };
+
+        // Need to handle directory change for prefetch
+        if prefetch_dir != cur_dir {
+            // Prefetching across directory boundary - skip for simplicity
+            // (would need to open the other directory)
+            prefetched = None;
+        } else {
+            file_name.clear();
+            write!(&mut file_name, "{0: >03}.tif", prefetch_page).unwrap();
+            if open_2bpp_image(&mut cur_child_dir, next_buf, &file_name).is_ok() {
+                prefetched = Some((prefetch_dir, prefetch_page));
+            } else {
+                prefetched = None;
+            }
+        }
     }
 }
