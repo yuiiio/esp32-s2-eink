@@ -87,6 +87,61 @@ impl embedded_sdmmc::TimeSource for FakeTimesource {
     }
 }
 
+/// Count subdirectories in a directory (excluding . and ..)
+/// Returns early when max_count is reached
+fn count_subdirs<
+    D: embedded_sdmmc::BlockDevice,
+    T: embedded_sdmmc::TimeSource,
+    const MAX_DIRS: usize,
+    const MAX_FILES: usize,
+    const MAX_VOLUMES: usize,
+>(
+    dir: &Directory<D, T, MAX_DIRS, MAX_FILES, MAX_VOLUMES>,
+    max_count: u16,
+) -> u16 {
+    let mut count: u16 = 0;
+    let _ = dir.iterate_dir(|entry| {
+        if entry.attributes.is_directory()
+            && entry.name != ShortFileName::parent_dir()
+            && entry.name != ShortFileName::this_dir()
+        {
+            count += 1;
+            if count >= max_count {
+                return ControlFlow::Break(());
+            }
+        }
+        ControlFlow::Continue(())
+    });
+    count
+}
+
+/// Count files in a directory (excluding . and ..)
+/// Returns early when max_count is reached
+fn count_entries<
+    D: embedded_sdmmc::BlockDevice,
+    T: embedded_sdmmc::TimeSource,
+    const MAX_DIRS: usize,
+    const MAX_FILES: usize,
+    const MAX_VOLUMES: usize,
+>(
+    dir: &Directory<D, T, MAX_DIRS, MAX_FILES, MAX_VOLUMES>,
+    max_count: u16,
+) -> u16 {
+    let mut count: u16 = 0;
+    let _ = dir.iterate_dir(|entry| {
+        if entry.name != ShortFileName::parent_dir()
+            && entry.name != ShortFileName::this_dir()
+        {
+            count += 1;
+            if count >= max_count {
+                return ControlFlow::Break(());
+            }
+        }
+        ControlFlow::Continue(())
+    });
+    count
+}
+
 fn open_2bpp_image<
     D: embedded_sdmmc::BlockDevice,
     T: embedded_sdmmc::TimeSource,
@@ -319,31 +374,13 @@ fn main() -> ! {
         .expect("failed to open volume");
     let root_dir = volume0.open_root_dir().expect("failed to open volume");
 
-    //DirEntry is 32 bytes // ShortFileName is [u8; 11]
-    let mut root_dir_directories_len: u16 = 0;
-    root_dir
-        .iterate_dir(|entry| {
-            if entry.attributes.is_directory()
-                && entry.name != ShortFileName::parent_dir()
-                && entry.name != ShortFileName::this_dir()
-            {
-                root_dir_directories_len += 1;
-            }
-            ControlFlow::Continue(())
-        })
-        .unwrap();
-
-    let mut dir_name = String::with_capacity(5); //xxxx
-    let mut file_name = String::with_capacity(8); //xxx.tif
-    
     const MAX_ROOT_DIRS: u16 = 9999;
     const MAX_CHILD_FILES: u16 = 999;
 
-    root_dir_directories_len = if root_dir_directories_len > MAX_ROOT_DIRS {
-        MAX_ROOT_DIRS
-    } else {
-        root_dir_directories_len
-    };
+    let mut dir_name = String::with_capacity(5); //xxxx
+    let mut file_name = String::with_capacity(8); //xxx.tif
+
+    let root_dir_directories_len = count_subdirs(&root_dir, MAX_ROOT_DIRS);
 
     let mut cur_dir: u16 = if last_opend_dir_num > root_dir_directories_len {
         1
@@ -365,21 +402,8 @@ fn main() -> ! {
     */
 
     write!(&mut dir_name, "{0: >04}", cur_dir).unwrap();
-    let mut cur_dir_files_len: u16 = 0;
     let mut cur_child_dir = root_dir.open_dir(dir_name.as_str()).unwrap();
-
-    cur_child_dir
-        .iterate_dir(|_entry| {
-            cur_dir_files_len += 1;
-            ControlFlow::Continue(())
-        })
-        .unwrap();
-    cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
-    cur_dir_files_len = if cur_dir_files_len > MAX_CHILD_FILES {
-        MAX_CHILD_FILES
-    } else {
-        cur_dir_files_len
-    };
+    let mut cur_dir_files_len = count_entries(&cur_child_dir, MAX_CHILD_FILES);
 
     let mut cur_page: u16 = if last_opend_page_num > cur_dir_files_len {
         0
@@ -492,20 +516,7 @@ fn main() -> ! {
                     write!(&mut dir_name, "{0: >04}", cur_dir).unwrap();
                     cur_child_dir.close().unwrap();
                     cur_child_dir = root_dir.open_dir(dir_name.as_str()).unwrap();
-
-                    cur_dir_files_len = 0;
-                    cur_child_dir
-                        .iterate_dir(|_entry| {
-                            cur_dir_files_len += 1;
-                            ControlFlow::Continue(())
-                        })
-                        .unwrap();
-                    cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
-                    cur_dir_files_len = if cur_dir_files_len > MAX_CHILD_FILES {
-                        MAX_CHILD_FILES
-                    } else {
-                        cur_dir_files_len
-                    };
+                    cur_dir_files_len = count_entries(&cur_child_dir, MAX_CHILD_FILES);
 
                     cur_page = cur_dir_files_len - 1;
                 } else {
@@ -524,20 +535,7 @@ fn main() -> ! {
                     write!(&mut dir_name, "{0: >04}", cur_dir).unwrap();
                     cur_child_dir.close().unwrap();
                     cur_child_dir = root_dir.open_dir(dir_name.as_str()).unwrap();
-
-                    cur_dir_files_len = 0;
-                    cur_child_dir
-                        .iterate_dir(|_entry| {
-                            cur_dir_files_len += 1;
-                            ControlFlow::Continue(())
-                        })
-                        .unwrap();
-                    cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
-                    cur_dir_files_len = if cur_dir_files_len > MAX_CHILD_FILES {
-                        MAX_CHILD_FILES
-                    } else {
-                        cur_dir_files_len
-                    };
+                    cur_dir_files_len = count_entries(&cur_child_dir, MAX_CHILD_FILES);
 
                     cur_page = 0;
                 } else {
@@ -576,20 +574,7 @@ fn main() -> ! {
                             write!(&mut dir_name, "{0: >04}", cur_dir).unwrap();
                             cur_child_dir.close().unwrap();
                             cur_child_dir = root_dir.open_dir(dir_name.as_str()).unwrap();
-
-                            cur_dir_files_len = 0;
-                            cur_child_dir
-                                .iterate_dir(|_entry| {
-                                    cur_dir_files_len += 1;
-                                    ControlFlow::Continue(())
-                                })
-                            .unwrap();
-                            cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
-                            cur_dir_files_len = if cur_dir_files_len > MAX_CHILD_FILES {
-                                MAX_CHILD_FILES
-                            } else {
-                                cur_dir_files_len
-                            };
+                            cur_dir_files_len = count_entries(&cur_child_dir, MAX_CHILD_FILES);
                             cur_page = cur_dir_files_len - 1; // pre chapter dir's last
                             indicator_refresh = true;
 
@@ -617,20 +602,7 @@ fn main() -> ! {
                             write!(&mut dir_name, "{0: >04}", cur_dir).unwrap();
                             cur_child_dir.close().unwrap();
                             cur_child_dir = root_dir.open_dir(dir_name.as_str()).unwrap();
-
-                            cur_dir_files_len = 0;
-                            cur_child_dir
-                                .iterate_dir(|_entry| {
-                                    cur_dir_files_len += 1;
-                                    ControlFlow::Continue(())
-                                })
-                            .unwrap();
-                            cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
-                            cur_dir_files_len = if cur_dir_files_len > MAX_CHILD_FILES {
-                                MAX_CHILD_FILES
-                            } else {
-                                cur_dir_files_len
-                            };
+                            cur_dir_files_len = count_entries(&cur_child_dir, MAX_CHILD_FILES);
                             cur_page = 0; // next chapter dir's first
                             indicator_refresh = true;
                         } else {
@@ -702,20 +674,7 @@ fn main() -> ! {
                                 write!(&mut dir_name, "{0: >04}", cur_dir).unwrap();
                                 cur_child_dir.close().unwrap();
                                 cur_child_dir = root_dir.open_dir(dir_name.as_str()).unwrap();
-
-                                cur_dir_files_len = 0;
-                                cur_child_dir
-                                    .iterate_dir(|_entry| {
-                                        cur_dir_files_len += 1;
-                                        ControlFlow::Continue(())
-                                    })
-                                    .unwrap();
-                                cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
-                                cur_dir_files_len = if cur_dir_files_len > MAX_CHILD_FILES {
-                                    MAX_CHILD_FILES
-                                } else {
-                                    cur_dir_files_len
-                                };
+                                cur_dir_files_len = count_entries(&cur_child_dir, MAX_CHILD_FILES);
 
                                 cur_page = 0;
                                 break 'inner;
