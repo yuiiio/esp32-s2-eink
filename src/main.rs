@@ -729,16 +729,5 @@ fn main() -> ! {
                 &(((cur_dir as u32) << 16) + (cur_page as u32)).to_be_bytes(),
             )
             .unwrap();
-
-        // Prefetch next page only (keeps response fast)
-        let next_page = cur_page + 1;
-        if next_page < cur_dir_files_len {
-            let prefetch_id = PageId::new(cur_dir, next_page);
-            if let Some(prefetch_buf) = page_cache.prefetch_slot(prefetch_id) {
-                file_name.clear();
-                write!(&mut file_name, "{0: >03}.tif", next_page).unwrap();
-                let _ = open_2bpp_image(&mut cur_child_dir, prefetch_buf, &file_name);
-            }
-        }
     }
 }
