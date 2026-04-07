@@ -239,112 +239,112 @@ impl EinkDisplay {
         self.end_frame();
     }
 
-    pub fn write_top_indicator(&mut self, first_commit: bool, status_var: u32, pre_status_var: u32) {
-        // partial update
-        const TOP_INDICATOR_WIDTH_DIV_4: usize = 100 / 4;
-        const SPLIT_WIDTH: usize = 4 / 4;
-        const BAR_WIDTH: u32 = 20;
+    /// Generalized slider drawing at any horizontal position
+    /// - x_pos: horizontal position in pixels (must be multiple of 4)
+    /// - slider_width: width in pixels (must be multiple of 4)
+    /// - bar_half_height: half height of the slider knob
+    /// - draw_split_left: draw separator line on left edge
+    /// - draw_split_right: draw separator line on right edge
+    pub fn write_slider(
+        &mut self,
+        x_pos: usize,
+        slider_width: usize,
+        bar_half_height: u32,
+        draw_split_left: bool,
+        draw_split_right: bool,
+        first_commit: bool,
+        status_var: u32,
+        pre_status_var: u32,
+    ) {
+        const SPLIT_WIDTH: usize = 4; // pixels
+        let x_pos_div4 = x_pos / 4;
+        let slider_width_div4 = slider_width / 4;
+        let split_width_div4 = SPLIT_WIDTH / 4;
+
+        let left_split = if draw_split_left { split_width_div4 } else { 0 };
+        let right_split = if draw_split_right { split_width_div4 } else { 0 };
+        let bar_width_div4 = slider_width_div4 - left_split - right_split;
+
         self.start_frame();
         for line in 0..HEIGHT {
             self.xstl.set_low();
-            if first_commit {
-                if status_var.abs_diff(line as u32) <= BAR_WIDTH {
-                    //black button
-                    unsafe {
-                        asm!("wur.gpio_out {0}", in(reg) BLACK_FOUR_PIXEL);
-                    }
-                    for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
-                        // draw bar
-                        self.xcl.set_high();
-                        self.delay.delay_micros(1);
-                        self.xcl.set_low();
-                    }
+
+            // skip pixels before slider
+            if x_pos_div4 > 0 {
+                unsafe { asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL); }
+                for _i in 0..x_pos_div4 {
+                    self.xcl.set_high();
+                    self.xcl.set_low();
+                }
+            }
+
+            let in_current = status_var.abs_diff(line as u32) <= bar_half_height;
+            let in_previous = pre_status_var.abs_diff(line as u32) <= bar_half_height;
+
+            // determine what to draw for slider body
+            let pixel = if first_commit {
+                if in_current { BLACK_FOUR_PIXEL } else { WHITE_FOUR_PIXEL }
+            } else {
+                if in_current && !in_previous {
+                    BLACK_FOUR_PIXEL // new position
+                } else if !in_current && in_previous {
+                    WHITE_FOUR_PIXEL // clear old position
                 } else {
-                    //white backgruond
-                    unsafe {
-                        asm!("wur.gpio_out {0}", in(reg) WHITE_FOUR_PIXEL);
-                    }
-                    for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
-                        // draw bar
-                        self.xcl.set_high();
-                        self.delay.delay_micros(1);
-                        self.xcl.set_low();
-                    }
+                    NONE_FOUR_PIXEL // no change
                 }
-                //black
-                unsafe {
-                    asm!("wur.gpio_out {0}", in(reg) BLACK_FOUR_PIXEL);
+            };
+
+            // left split bar
+            if draw_split_left {
+                if first_commit {
+                    unsafe { asm!("wur.gpio_out {0}", in(reg) BLACK_FOUR_PIXEL); }
+                } else {
+                    unsafe { asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL); }
                 }
-                for _i in 0..SPLIT_WIDTH {
-                    // draw split bar
+                for _i in 0..split_width_div4 {
+                    self.xcl.set_high();
+                    self.delay.delay_micros(1);
+                    self.xcl.set_low();
+                }
+            }
+
+            // slider body
+            unsafe { asm!("wur.gpio_out {0}", in(reg) pixel); }
+            if first_commit && pixel != NONE_FOUR_PIXEL {
+                for _i in 0..bar_width_div4 {
                     self.xcl.set_high();
                     self.delay.delay_micros(1);
                     self.xcl.set_low();
                 }
             } else {
-                if status_var.abs_diff(line as u32) <= BAR_WIDTH {
-                    if pre_status_var.abs_diff(line as u32) > BAR_WIDTH {
-                        //black button
-                        unsafe {
-                            asm!("wur.gpio_out {0}", in(reg) BLACK_FOUR_PIXEL);
-                        }
-                        for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
-                            // draw bar
-                            self.xcl.set_high();
-                            self.xcl.set_low();
-                        }
-                    } else {
-                        //none
-                        unsafe {
-                            asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL);
-                        }
-                        for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
-                            // draw bar
-                            self.xcl.set_high();
-                            self.xcl.set_low();
-                        }
-                    }
-                } else {
-                    if pre_status_var.abs_diff(line as u32) <= BAR_WIDTH {
-                        //white background
-                        unsafe {
-                            asm!("wur.gpio_out {0}", in(reg) WHITE_FOUR_PIXEL);
-                        }
-                        for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
-                            // clear pre bar
-                            self.xcl.set_high();
-                            self.xcl.set_low();
-                        }
-                    } else {
-                        //none
-                        unsafe {
-                            asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL);
-                        }
-                        for _i in 0..(TOP_INDICATOR_WIDTH_DIV_4 - SPLIT_WIDTH) {
-                            // draw bar
-                            self.xcl.set_high();
-                            self.xcl.set_low();
-                        }
-                    }
-                }
-                unsafe {
-                    asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL);
-                }
-                for _i in 0..SPLIT_WIDTH {
-                    // draw split bar(none)
+                for _i in 0..bar_width_div4 {
                     self.xcl.set_high();
                     self.xcl.set_low();
                 }
             }
-            // none
-            unsafe {
-                asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL);
+
+            // right split bar
+            if draw_split_right {
+                if first_commit {
+                    unsafe { asm!("wur.gpio_out {0}", in(reg) BLACK_FOUR_PIXEL); }
+                } else {
+                    unsafe { asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL); }
+                }
+                for _i in 0..split_width_div4 {
+                    self.xcl.set_high();
+                    self.delay.delay_micros(1);
+                    self.xcl.set_low();
+                }
             }
-            /* can write 4 pixel for onece */
-            for _i in 0..((WIDTH / 4) - TOP_INDICATOR_WIDTH_DIV_4) {
-                //skip not changed area
-                self.xcl.set_high();
-                self.xcl.set_low();
+
+            // skip pixels after slider
+            let remaining = (WIDTH / 4) - x_pos_div4 - slider_width_div4;
+            if remaining > 0 {
+                unsafe { asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL); }
+                for _i in 0..remaining {
+                    self.xcl.set_high();
+                    self.xcl.set_low();
+                }
             }
 
             self.xstl.set_high();
@@ -361,124 +361,31 @@ impl EinkDisplay {
         self.end_frame();
     }
 
+    // Convenience wrappers for backward compatibility
+    pub fn write_top_indicator(&mut self, first_commit: bool, status_var: u32, pre_status_var: u32) {
+        self.write_slider(
+            0,      // x_pos: left edge
+            100,    // width
+            20,     // bar_half_height
+            false,  // no left split
+            true,   // right split
+            first_commit,
+            status_var,
+            pre_status_var,
+        );
+    }
+
     pub fn write_bottom_indicator(&mut self, first_commit: bool, status_var: u32, pre_status_var: u32) {
-        // partial update
-        const BOTTOM_INDICATOR_WIDTH_DIV_4: usize = 100 / 4;
-        const SPLIT_WIDTH: usize = 4 / 4;
-        const BAR_WIDTH: u32 = 20;
-        self.start_frame();
-        for line in 0..HEIGHT {
-            // none
-            unsafe {
-                asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL);
-            }
-            self.xstl.set_low();
-            /* can write 4 pixel for onece */
-            for _i in 0..((WIDTH / 4) - BOTTOM_INDICATOR_WIDTH_DIV_4) {
-                //skip not changed area
-                self.xcl.set_high();
-                self.xcl.set_low();
-            }
-            if first_commit {
-                //black
-                unsafe {
-                    asm!("wur.gpio_out {0}", in(reg) BLACK_FOUR_PIXEL);
-                }
-                self.delay.delay_micros(1);
-                for _i in 0..SPLIT_WIDTH {
-                    // draw split bar
-                    self.xcl.set_high();
-                    self.xcl.set_low();
-                }
-                if status_var.abs_diff(line as u32) <= BAR_WIDTH {
-                    //black button
-                    unsafe {
-                        asm!("wur.gpio_out {0}", in(reg) BLACK_FOUR_PIXEL);
-                    }
-                    for _i in SPLIT_WIDTH..BOTTOM_INDICATOR_WIDTH_DIV_4 {
-                        // draw bar
-                        self.xcl.set_high();
-                        self.xcl.set_low();
-                    }
-                } else {
-                    //white backgruond
-                    unsafe {
-                        asm!("wur.gpio_out {0}", in(reg) WHITE_FOUR_PIXEL);
-                    }
-                    for _i in SPLIT_WIDTH..BOTTOM_INDICATOR_WIDTH_DIV_4 {
-                        // draw bar
-                        self.xcl.set_high();
-                        self.xcl.set_low();
-                    }
-                }
-            } else {
-                // none
-                unsafe {
-                    asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL);
-                }
-                for _i in 0..SPLIT_WIDTH {
-                    // skip split bar
-                    self.xcl.set_high();
-                    self.xcl.set_low();
-                }
-                if status_var.abs_diff(line as u32) <= BAR_WIDTH {
-                    if pre_status_var.abs_diff(line as u32) > BAR_WIDTH {
-                        //black button
-                        unsafe {
-                            asm!("wur.gpio_out {0}", in(reg) BLACK_FOUR_PIXEL);
-                        }
-                        for _i in SPLIT_WIDTH..BOTTOM_INDICATOR_WIDTH_DIV_4 {
-                            // draw bar
-                            self.xcl.set_high();
-                            self.xcl.set_low();
-                        }
-                    } else {
-                        //none
-                        unsafe {
-                            asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL);
-                        }
-                        for _i in SPLIT_WIDTH..BOTTOM_INDICATOR_WIDTH_DIV_4 {
-                            // draw bar
-                            self.xcl.set_high();
-                            self.xcl.set_low();
-                        }
-                    }
-                } else {
-                    if pre_status_var.abs_diff(line as u32) <= BAR_WIDTH {
-                        //white background
-                        unsafe {
-                            asm!("wur.gpio_out {0}", in(reg) WHITE_FOUR_PIXEL);
-                        }
-                        for _i in SPLIT_WIDTH..BOTTOM_INDICATOR_WIDTH_DIV_4 {
-                            // clear pre bar
-                            self.xcl.set_high();
-                            self.xcl.set_low();
-                        }
-                    } else {
-                        //none
-                        unsafe {
-                            asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL);
-                        }
-                        for _i in SPLIT_WIDTH..BOTTOM_INDICATOR_WIDTH_DIV_4 {
-                            // draw bar
-                            self.xcl.set_high();
-                            self.xcl.set_low();
-                        }
-                    }
-                }
-            }
-            self.xstl.set_high();
-            self.xcl.set_high();
-            self.xcl.set_low();
-
-            self.xle.set_high();
-            self.xle.set_low();
-
-            self.ckv.set_low();
-            self.delay.delay_micros(1);
-            self.ckv.set_high();
-        }
-        self.end_frame();
+        self.write_slider(
+            WIDTH - 100,  // x_pos: right edge
+            100,          // width
+            20,           // bar_half_height
+            true,         // left split
+            false,        // no right split
+            first_commit,
+            status_var,
+            pre_status_var,
+        );
     }
 }
 
