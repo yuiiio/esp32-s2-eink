@@ -266,7 +266,7 @@ fn main() -> ! {
     let spi = Spi::new(
         peripherals.SPI2,
         esp_hal::spi::master::Config::default()
-            .with_frequency(Rate::from_mhz(50))
+            .with_frequency(Rate::from_mhz(80))
             .with_mode(esp_hal::spi::Mode::_0),
     )
     .unwrap()
