@@ -48,6 +48,9 @@ use eink::{EinkDisplay, TWO_BPP_BUF_SIZE, HEIGHT, BLACK_FOUR_PIXEL, WHITE_FOUR_P
 mod touch;
 use touch::{TouchInput, TouchThresholds};
 
+mod page_cache;
+use page_cache::{PageCache, PageId};
+
 //static PSRAM_ALLOCATOR: esp_alloc::EspHeap = esp_alloc::EspHeap::empty();
 // seems conflicts with global allocator maybe current esp-hal issue.
 
@@ -291,14 +294,10 @@ fn main() -> ! {
 
     let volume_manager = VolumeManager::new(sdcard, FakeTimesource {});
 
-    // too big for dram? so use psram(2M)
-    let mut img_buf: Box<[u8; TWO_BPP_BUF_SIZE]> = Box::new([0u8; TWO_BPP_BUF_SIZE]);
-    let mut img_buf_2: Box<[u8; TWO_BPP_BUF_SIZE]> = Box::new([0u8; TWO_BPP_BUF_SIZE]);
-    let mut next_buf = &mut img_buf;
-    let mut pre_buf = &mut img_buf_2;
-
-    // Prefetch state: (dir, page) of prefetched data in next_buf
-    let mut prefetched: Option<(u16, u16)> = None;
+    // Page cache in PSRAM (5 buffers × 379KB ≈ 1.9MB)
+    let mut page_cache = PageCache::new();
+    // Keep one buffer for "previous" display (reverse waveform)
+    let mut prev_display_buf: Box<[u8; TWO_BPP_BUF_SIZE]> = Box::new([0u8; TWO_BPP_BUF_SIZE]);
 
 
     /* get the values of dedicated GPIO from the CPU, not peripheral registers */
@@ -700,70 +699,45 @@ fn main() -> ! {
                 }
             }
         }
-        // Check if prefetched data matches current request
-        let use_prefetch = prefetched == Some((cur_dir, cur_page));
+        let current_page_id = PageId::new(cur_dir, cur_page);
 
-        if use_prefetch {
-            // Prefetched data is already in next_buf, skip reading
-            eink_display.write_2bpp_image_rev(pre_buf);
-            eink_display.write_2bpp_image(next_buf);
-            flash
-                .write(
-                    flash_addr,
-                    &(((cur_dir as u32) << 16) + (cur_page as u32)).to_be_bytes(),
-                )
-                .unwrap();
-        } else {
-            // Normal read
+        // Try to get from cache, or load from SD card
+        let (buf, was_cached) = page_cache.get_or_alloc(current_page_id);
+
+        if !was_cached {
+            // Load from SD card
             file_name.clear();
             write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();
-            match open_2bpp_image(&mut cur_child_dir, next_buf, &file_name) {
-                Ok(_) => {
-                    eink_display.write_2bpp_image_rev(pre_buf);
-                    eink_display.write_2bpp_image(next_buf);
-                    flash
-                        .write(
-                            flash_addr,
-                            &(((cur_dir as u32) << 16) + (cur_page as u32)).to_be_bytes(),
-                        )
-                        .unwrap();
-                }
-                Err(_error) => {
-                    /* not found file */
-                    eink_display.write_all(WHITE_FOUR_PIXEL);
-                    eink_display.write_all(BLACK_FOUR_PIXEL);
-                    prefetched = None;
-                    continue;
-                }
-            };
+            if open_2bpp_image(&mut cur_child_dir, buf, &file_name).is_err() {
+                eink_display.write_all(WHITE_FOUR_PIXEL);
+                eink_display.write_all(BLACK_FOUR_PIXEL);
+                continue;
+            }
         }
 
-        core::mem::swap(&mut pre_buf, &mut next_buf);
+        // Display: reverse previous, then show current
+        eink_display.write_2bpp_image_rev(&prev_display_buf);
+        eink_display.write_2bpp_image(page_cache.current_buffer());
 
-        // Prefetch next page into next_buf (which is now empty after swap)
-        let (prefetch_dir, prefetch_page) = if cur_page < cur_dir_files_len - 1 {
-            // Next page in same directory
-            (cur_dir, cur_page + 1)
-        } else if cur_dir < root_dir_directories_len {
-            // First page of next directory
-            (cur_dir + 1, 0)
-        } else {
-            // Wrap to first directory
-            (1, 0)
-        };
+        // Save current buffer for next reverse display
+        prev_display_buf.copy_from_slice(page_cache.current_buffer());
 
-        // Need to handle directory change for prefetch
-        if prefetch_dir != cur_dir {
-            // Prefetching across directory boundary - skip for simplicity
-            // (would need to open the other directory)
-            prefetched = None;
-        } else {
-            file_name.clear();
-            write!(&mut file_name, "{0: >03}.tif", prefetch_page).unwrap();
-            if open_2bpp_image(&mut cur_child_dir, next_buf, &file_name).is_ok() {
-                prefetched = Some((prefetch_dir, prefetch_page));
-            } else {
-                prefetched = None;
+        // Save state to flash
+        flash
+            .write(
+                flash_addr,
+                &(((cur_dir as u32) << 16) + (cur_page as u32)).to_be_bytes(),
+            )
+            .unwrap();
+
+        // Prefetch next page only (keeps response fast)
+        let next_page = cur_page + 1;
+        if next_page < cur_dir_files_len {
+            let prefetch_id = PageId::new(cur_dir, next_page);
+            if let Some(prefetch_buf) = page_cache.prefetch_slot(prefetch_id) {
+                file_name.clear();
+                write!(&mut file_name, "{0: >03}.tif", next_page).unwrap();
+                let _ = open_2bpp_image(&mut cur_child_dir, prefetch_buf, &file_name);
             }
         }
     }
