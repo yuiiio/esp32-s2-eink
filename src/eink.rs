@@ -310,17 +310,9 @@ impl EinkDisplay {
 
             // slider body
             unsafe { asm!("wur.gpio_out {0}", in(reg) pixel); }
-            if first_commit && pixel != NONE_FOUR_PIXEL {
-                for _i in 0..bar_width_div4 {
-                    self.xcl.set_high();
-                    self.delay.delay_micros(1);
-                    self.xcl.set_low();
-                }
-            } else {
-                for _i in 0..bar_width_div4 {
-                    self.xcl.set_high();
-                    self.xcl.set_low();
-                }
+            for _i in 0..bar_width_div4 {
+                self.xcl.set_high();
+                self.xcl.set_low();
             }
 
             // right split bar
