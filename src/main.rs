@@ -10,6 +10,7 @@ use alloc::boxed::Box;
 use esp_alloc;
 
 use core::fmt::Write;
+use core::ops::ControlFlow;
 use core::ptr::addr_of_mut;
 
 use esp_backtrace as _;
@@ -35,7 +36,7 @@ use esp_storage::FlashStorage;
 
 use embedded_hal_bus::spi::ExclusiveDevice;
 use embedded_sdmmc::{
-    sdcard::SdCard, BlockDevice, Directory, Error, Mode, SdCardError, ShortFileName, VolumeIdx,
+    SdCard, BlockDevice, Directory, Error, Mode, SdCardError, ShortFileName, VolumeIdx,
     VolumeManager,
 };
 
@@ -328,6 +329,7 @@ fn main() -> ! {
             {
                 root_dir_directories_len += 1;
             }
+            ControlFlow::Continue(())
         })
         .unwrap();
 
@@ -369,6 +371,7 @@ fn main() -> ! {
     cur_child_dir
         .iterate_dir(|_entry| {
             cur_dir_files_len += 1;
+            ControlFlow::Continue(())
         })
         .unwrap();
     cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
@@ -494,6 +497,7 @@ fn main() -> ! {
                     cur_child_dir
                         .iterate_dir(|_entry| {
                             cur_dir_files_len += 1;
+                            ControlFlow::Continue(())
                         })
                         .unwrap();
                     cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
@@ -525,6 +529,7 @@ fn main() -> ! {
                     cur_child_dir
                         .iterate_dir(|_entry| {
                             cur_dir_files_len += 1;
+                            ControlFlow::Continue(())
                         })
                         .unwrap();
                     cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
@@ -576,6 +581,7 @@ fn main() -> ! {
                             cur_child_dir
                                 .iterate_dir(|_entry| {
                                     cur_dir_files_len += 1;
+                                    ControlFlow::Continue(())
                                 })
                             .unwrap();
                             cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
@@ -616,6 +622,7 @@ fn main() -> ! {
                             cur_child_dir
                                 .iterate_dir(|_entry| {
                                     cur_dir_files_len += 1;
+                                    ControlFlow::Continue(())
                                 })
                             .unwrap();
                             cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
@@ -700,6 +707,7 @@ fn main() -> ! {
                                 cur_child_dir
                                     .iterate_dir(|_entry| {
                                         cur_dir_files_len += 1;
+                                        ControlFlow::Continue(())
                                     })
                                     .unwrap();
                                 cur_dir_files_len -= 2; // child_dir contains . and .. in DIrEntries
