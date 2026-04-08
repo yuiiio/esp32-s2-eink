@@ -294,10 +294,9 @@ fn main() -> ! {
 
     let volume_manager = VolumeManager::new(sdcard, FakeTimesource {});
 
-    // Page cache in PSRAM (5 buffers × 379KB ≈ 1.9MB)
+    // Page cache in PSRAM (4 buffers × 379KB ≈ 1.5MB)
+    // prev_display is managed by index, no separate buffer needed
     let mut page_cache = PageCache::new();
-    // Keep one buffer for "previous" display (reverse waveform)
-    let mut prev_display_buf: Box<[u8; TWO_BPP_BUF_SIZE]> = Box::new([0u8; TWO_BPP_BUF_SIZE]);
 
 
     /* get the values of dedicated GPIO from the CPU, not peripheral registers */
@@ -716,11 +715,11 @@ fn main() -> ! {
         }
 
         // Display: reverse previous, then show current
-        eink_display.write_2bpp_image_rev(&prev_display_buf);
+        eink_display.write_2bpp_image_rev(page_cache.prev_buffer());
         eink_display.write_2bpp_image(page_cache.current_buffer());
 
-        // Save current buffer for next reverse display
-        prev_display_buf.copy_from_slice(page_cache.current_buffer());
+        // Mark current as displayed (index swap, no memory copy)
+        page_cache.mark_displayed();
 
         // Save state to flash
         flash

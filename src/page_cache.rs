@@ -69,6 +69,8 @@ pub struct PageCache {
     entries: [CacheEntry; CACHE_SIZE],
     /// Index of the "current" page in the cache (used for display)
     current_idx: usize,
+    /// Index of the "previous" displayed page (for reverse waveform)
+    prev_idx: usize,
 }
 
 impl PageCache {
@@ -76,6 +78,7 @@ impl PageCache {
         Self {
             entries: core::array::from_fn(|_| CacheEntry::new()),
             current_idx: 0,
+            prev_idx: 0,
         }
     }
 
@@ -99,12 +102,13 @@ impl PageCache {
 
     /// Get the previous buffer (for reverse display)
     pub fn prev_buffer(&self) -> &[u8; TWO_BPP_BUF_SIZE] {
-        let prev_idx = if self.current_idx == 0 {
-            CACHE_SIZE - 1
-        } else {
-            self.current_idx - 1
-        };
-        &self.entries[prev_idx].buffer
+        &self.entries[self.prev_idx].buffer
+    }
+
+    /// Mark current page as displayed (moves current to prev)
+    /// Call this after displaying the current page
+    pub fn mark_displayed(&mut self) {
+        self.prev_idx = self.current_idx;
     }
 
     /// Find or allocate a buffer for loading a page
@@ -125,17 +129,23 @@ impl PageCache {
 
     /// Find best slot to allocate for a new page
     fn find_alloc_slot(&self, target: PageId) -> usize {
-        // First, try to find empty slot
+        // First, try to find empty slot (but not prev_idx which holds previous display)
         if let Some(idx) = self.entries.iter().position(|e| e.page_id.is_none()) {
-            return idx;
+            if idx != self.prev_idx {
+                return idx;
+            }
         }
 
         // Otherwise, evict the page furthest from target
-        // Simple heuristic: evict page with largest distance
-        let mut best_idx = 0;
+        // Never evict prev_idx (needed for reverse waveform display)
+        let mut best_idx = (self.prev_idx + 1) % CACHE_SIZE;
         let mut best_dist = 0i32;
 
         for (idx, entry) in self.entries.iter().enumerate() {
+            // Don't evict prev buffer
+            if idx == self.prev_idx {
+                continue;
+            }
             if let Some(cached_id) = entry.page_id {
                 let dist = page_distance(cached_id, target);
                 if dist > best_dist {
