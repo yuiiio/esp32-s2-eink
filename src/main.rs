@@ -294,7 +294,7 @@ fn main() -> ! {
 
     let volume_manager = VolumeManager::new(sdcard, FakeTimesource {});
 
-    // Page cache in PSRAM (4 buffers × 379KB ≈ 1.5MB)
+    // Page cache in PSRAM (5 buffers × 379KB ≈ 1.9MB)
     // prev_display is managed by index, no separate buffer needed
     let mut page_cache = PageCache::new();
 

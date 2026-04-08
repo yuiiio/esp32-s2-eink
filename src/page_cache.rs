@@ -7,8 +7,8 @@ use alloc::boxed::Box;
 use crate::eink::TWO_BPP_BUF_SIZE;
 
 /// Maximum number of cached pages (limited by 2MB PSRAM)
-/// 4 buffers × 379KB = 1.5MB, + prev_display_buf 379KB = 1.9MB
-pub const CACHE_SIZE: usize = 4;
+/// 5 buffers × 379KB = 1.9MB (prev_display is now index-managed)
+pub const CACHE_SIZE: usize = 5;
 
 /// Cached page identifier
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
