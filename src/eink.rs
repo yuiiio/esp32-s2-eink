@@ -379,5 +379,21 @@ impl EinkDisplay {
             pre_status_var,
         );
     }
+
+    /// Center slider for title selection (x_pos = WIDTH/2 - width/2, rounded to multiple of 4)
+    pub fn write_center_indicator(&mut self, first_commit: bool, status_var: u32, pre_status_var: u32) {
+        const SLIDER_WIDTH: usize = 100;
+        const X_POS: usize = (WIDTH / 2 - SLIDER_WIDTH / 2) / 4 * 4; // 672
+        self.write_slider(
+            X_POS,
+            SLIDER_WIDTH,
+            20,           // bar_half_height
+            true,         // left split
+            true,         // right split (both sides for center)
+            first_commit,
+            status_var,
+            pre_status_var,
+        );
+    }
 }
 

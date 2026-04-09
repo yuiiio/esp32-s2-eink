@@ -778,7 +778,74 @@ fn main() -> ! {
                                 cur_page = 0;
                                 break 'inner;
                             }
-                            /* TODO: Add title navigation mode with another touch.top */
+                            if touch.top {
+                                // Title indicator mode - navigate between titles
+                                let center_indicator_pos_current: u32 = HEIGHT as u32
+                                    - ((cur_title as u32 * HEIGHT as u32) / books_count as u32);
+                                eink_display.write_center_indicator(true, center_indicator_pos_current, 0);
+                                let mut center_pre_status_var = center_indicator_pos_current;
+
+                                touch_input.delay().delay_millis(500_u32);
+                                '_title_indicator: loop {
+                                    let touch = touch_input.read_all(
+                                        &mut adc1,
+                                        &mut touch_left,
+                                        &mut touch_right,
+                                        &mut touch_center,
+                                        &mut touch_top,
+                                    );
+
+                                    if touch.left {
+                                        if cur_title == 1 {
+                                            cur_title = books_count; //circling
+                                        } else {
+                                            cur_title = cur_title - 1;
+                                        }
+                                        let center_indicator_pos_current: u32 = HEIGHT as u32
+                                            - ((cur_title as u32 * HEIGHT as u32)
+                                                / books_count as u32);
+                                        eink_display.write_center_indicator(
+                                            false,
+                                            center_indicator_pos_current,
+                                            center_pre_status_var,
+                                        );
+                                        center_pre_status_var = center_indicator_pos_current;
+                                    }
+                                    if touch.right {
+                                        if cur_title == books_count {
+                                            cur_title = 1; //circling
+                                        } else {
+                                            cur_title = cur_title + 1;
+                                        }
+                                        let center_indicator_pos_current: u32 = HEIGHT as u32
+                                            - ((cur_title as u32 * HEIGHT as u32)
+                                                / books_count as u32);
+                                        eink_display.write_center_indicator(
+                                            false,
+                                            center_indicator_pos_current,
+                                            center_pre_status_var,
+                                        );
+                                        center_pre_status_var = center_indicator_pos_current;
+                                    }
+                                    if touch.center {
+                                        // Confirm title selection, open first chapter
+                                        title_dir.close().unwrap();
+                                        get_nth_dir_name(&books_dir, cur_title, &mut title_name);
+                                        title_dir = books_dir.open_dir(title_name.as_str()).unwrap();
+                                        chapters_count = count_subdirs(&title_dir, MAX_CHAPTERS);
+
+                                        cur_chapter = 1;
+                                        chapter_name.clear();
+                                        write!(&mut chapter_name, "{0: >04}", cur_chapter).unwrap();
+                                        cur_child_dir.close().unwrap();
+                                        cur_child_dir = title_dir.open_dir(chapter_name.as_str()).unwrap();
+                                        cur_dir_files_len = count_entries(&cur_child_dir, MAX_CHILD_FILES);
+
+                                        cur_page = 0;
+                                        break 'inner;
+                                    }
+                                }
+                            }
                         }
                     }
                 }
