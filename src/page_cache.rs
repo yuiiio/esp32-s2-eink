@@ -10,42 +10,17 @@ use crate::eink::TWO_BPP_BUF_SIZE;
 /// 5 buffers × 379KB = 1.9MB (prev_display is now index-managed)
 pub const CACHE_SIZE: usize = 5;
 
-/// Cached page identifier
+/// Cached page identifier (title, chapter, page)
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct PageId {
-    pub dir: u16,
+    pub title: u16,
+    pub chapter: u16,
     pub page: u16,
 }
 
 impl PageId {
-    pub fn new(dir: u16, page: u16) -> Self {
-        Self { dir, page }
-    }
-
-    /// Get next page ID within same directory
-    pub fn next(&self, max_pages: u16, max_dirs: u16) -> Self {
-        if self.page + 1 < max_pages {
-            Self::new(self.dir, self.page + 1)
-        } else if self.dir < max_dirs {
-            Self::new(self.dir + 1, 0)
-        } else {
-            Self::new(1, 0) // wrap around
-        }
-    }
-
-    /// Get previous page ID within same directory
-    pub fn prev(&self, max_pages_fn: impl Fn(u16) -> u16, max_dirs: u16) -> Self {
-        if self.page > 0 {
-            Self::new(self.dir, self.page - 1)
-        } else if self.dir > 1 {
-            let prev_dir = self.dir - 1;
-            let prev_max = max_pages_fn(prev_dir);
-            Self::new(prev_dir, prev_max.saturating_sub(1))
-        } else {
-            let last_dir = max_dirs;
-            let last_max = max_pages_fn(last_dir);
-            Self::new(last_dir, last_max.saturating_sub(1)) // wrap around
-        }
+    pub fn new(title: u16, chapter: u16, page: u16) -> Self {
+        Self { title, chapter, page }
     }
 }
 
@@ -207,11 +182,22 @@ impl PageCache {
         }
     }
 
-    /// Invalidate all cache entries for a directory
-    pub fn invalidate_dir(&mut self, dir: u16) {
+    /// Invalidate all cache entries for a title/chapter
+    pub fn invalidate_chapter(&mut self, title: u16, chapter: u16) {
         for entry in &mut self.entries {
             if let Some(id) = entry.page_id {
-                if id.dir == dir {
+                if id.title == title && id.chapter == chapter {
+                    entry.page_id = None;
+                }
+            }
+        }
+    }
+
+    /// Invalidate all cache entries for a title
+    pub fn invalidate_title(&mut self, title: u16) {
+        for entry in &mut self.entries {
+            if let Some(id) = entry.page_id {
+                if id.title == title {
                     entry.page_id = None;
                 }
             }
@@ -221,10 +207,14 @@ impl PageCache {
 
 /// Calculate "distance" between two pages for eviction policy
 fn page_distance(a: PageId, b: PageId) -> i32 {
-    if a.dir == b.dir {
+    if a.title == b.title && a.chapter == b.chapter {
+        // Same chapter: page distance
         (a.page as i32 - b.page as i32).abs()
+    } else if a.title == b.title {
+        // Same title, different chapter: medium distance
+        500 + (a.chapter as i32 - b.chapter as i32).abs() * 50
     } else {
-        // Different directory = large distance
-        1000 + (a.dir as i32 - b.dir as i32).abs() * 100
+        // Different title: large distance
+        1000 + (a.title as i32 - b.title as i32).abs() * 100
     }
 }

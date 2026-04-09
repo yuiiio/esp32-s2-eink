@@ -252,8 +252,7 @@ fn main() -> ! {
     flash.read(flash_addr, &mut bytes).unwrap();
     //write!(serial, "read = {:02x?}\n", &bytes[..4]).unwrap();
 
-    let last_opend_page_num: u16 = u16::from_be_bytes([bytes[2], bytes[3]]);
-    let last_opend_dir_num: u16 = u16::from_be_bytes([bytes[0], bytes[1]]);
+    // Flash format: title (12 bits) | chapter (10 bits) | page (10 bits) = 32 bits
 
     /* sd card with DMA */
     let sclk = peripherals.GPIO36;
@@ -386,38 +385,88 @@ fn main() -> ! {
     const MAX_ROOT_DIRS: u16 = 9999;
     const MAX_CHILD_FILES: u16 = 999;
 
-    let mut dir_name = String::with_capacity(5); //xxxx
+    let mut chapter_name = String::with_capacity(5); //xxxx (chapter number)
     let mut file_name = String::with_capacity(8); //xxx.tif
 
-    let root_dir_directories_len = count_subdirs(&root_dir, MAX_ROOT_DIRS);
+    // Open /books directory as new root for book navigation
+    let books_dir = root_dir.open_dir("BOOKS").expect("failed to open /BOOKS directory");
 
-    let mut cur_dir: u16 = if last_opend_dir_num > root_dir_directories_len {
+    const MAX_TITLES: u16 = 999;
+    const MAX_CHAPTERS: u16 = 999;
+
+    // Count books (title directories) in /books
+    let books_count = count_subdirs(&books_dir, MAX_TITLES);
+
+    // Get n-th directory name (1-indexed)
+    fn get_nth_dir_name<
+        D: embedded_sdmmc::BlockDevice,
+        T: embedded_sdmmc::TimeSource,
+        const MAX_DIRS: usize,
+        const MAX_FILES: usize,
+        const MAX_VOLUMES: usize,
+    >(
+        dir: &Directory<D, T, MAX_DIRS, MAX_FILES, MAX_VOLUMES>,
+        n: u16,
+        name_buf: &mut String,
+    ) {
+        name_buf.clear();
+        let mut count: u16 = 0;
+        let _ = dir.iterate_dir(|entry| {
+            if entry.attributes.is_directory()
+                && entry.name != ShortFileName::parent_dir()
+                && entry.name != ShortFileName::this_dir()
+            {
+                count += 1;
+                if count == n {
+                    // Convert ShortFileName to string
+                    let base = entry.name.base_name();
+                    for &b in base.iter() {
+                        if b == b' ' || b == 0 {
+                            break;
+                        }
+                        let _ = name_buf.push(b as char);
+                    }
+                    return ControlFlow::Break(());
+                }
+            }
+            ControlFlow::Continue(())
+        });
+    }
+
+    // Persistent state: title (12 bits), chapter (10 bits), page (10 bits) = 32 bits
+    let last_title_num: u16 = ((bytes[0] as u16) << 4) | ((bytes[1] as u16) >> 4);
+    let last_chapter_num: u16 = (((bytes[1] as u16) & 0x0F) << 6) | ((bytes[2] as u16) >> 2);
+    let last_page_num: u16 = (((bytes[2] as u16) & 0x03) << 8) | (bytes[3] as u16);
+
+    let mut cur_title: u16 = if last_title_num == 0 || last_title_num > books_count {
         1
     } else {
-        if last_opend_dir_num == 0 {
-            1
-        } else {
-            last_opend_dir_num
-        }
+        last_title_num
     };
 
-    /*
-    loop {
-        if usb_dev.poll(&mut [&mut serial.0]) {
-            break;
-        }
-    }
-    writeln!(serial, "cur_dir is {}\n", cur_dir).unwrap();
-    */
+    // Get current title directory name and open it
+    let mut title_name = String::with_capacity(12); // 8.3 format max
+    get_nth_dir_name(&books_dir, cur_title, &mut title_name);
+    let mut title_dir = books_dir.open_dir(title_name.as_str()).unwrap();
 
-    write!(&mut dir_name, "{0: >04}", cur_dir).unwrap();
-    let mut cur_child_dir = root_dir.open_dir(dir_name.as_str()).unwrap();
+    // Count chapters in current title
+    let mut chapters_count = count_subdirs(&title_dir, MAX_CHAPTERS);
+
+    let mut cur_chapter: u16 = if last_chapter_num == 0 || last_chapter_num > chapters_count {
+        1
+    } else {
+        last_chapter_num
+    };
+
+    // Open chapter directory
+    write!(&mut chapter_name, "{0: >04}", cur_chapter).unwrap();
+    let mut cur_child_dir = title_dir.open_dir(chapter_name.as_str()).unwrap();
     let mut cur_dir_files_len = count_entries(&cur_child_dir, MAX_CHILD_FILES);
 
-    let mut cur_page: u16 = if last_opend_page_num > cur_dir_files_len {
+    let mut cur_page: u16 = if last_page_num > cur_dir_files_len {
         0
     } else {
-        last_opend_page_num
+        last_page_num
     };
 
     /*self cpu impl touch pad*/
@@ -516,15 +565,25 @@ fn main() -> ! {
 
             if touch.left {
                 if cur_page == 0 {
-                    if cur_dir == 1 {
-                        cur_dir = root_dir_directories_len; // circling
+                    if cur_chapter == 1 {
+                        // Go to previous title's last chapter
+                        if cur_title == 1 {
+                            cur_title = books_count; // circling
+                        } else {
+                            cur_title -= 1;
+                        }
+                        title_dir.close().unwrap();
+                        get_nth_dir_name(&books_dir, cur_title, &mut title_name);
+                        title_dir = books_dir.open_dir(title_name.as_str()).unwrap();
+                        chapters_count = count_subdirs(&title_dir, MAX_CHAPTERS);
+                        cur_chapter = chapters_count;
                     } else {
-                        cur_dir -= 1;
+                        cur_chapter -= 1;
                     }
-                    dir_name.clear();
-                    write!(&mut dir_name, "{0: >04}", cur_dir).unwrap();
+                    chapter_name.clear();
+                    write!(&mut chapter_name, "{0: >04}", cur_chapter).unwrap();
                     cur_child_dir.close().unwrap();
-                    cur_child_dir = root_dir.open_dir(dir_name.as_str()).unwrap();
+                    cur_child_dir = title_dir.open_dir(chapter_name.as_str()).unwrap();
                     cur_dir_files_len = count_entries(&cur_child_dir, MAX_CHILD_FILES);
 
                     cur_page = cur_dir_files_len - 1;
@@ -535,15 +594,25 @@ fn main() -> ! {
             }
             if touch.right {
                 if cur_page == (cur_dir_files_len - 1) {
-                    if cur_dir == root_dir_directories_len {
-                        cur_dir = 1; // circling
+                    if cur_chapter == chapters_count {
+                        // Go to next title's first chapter
+                        if cur_title == books_count {
+                            cur_title = 1; // circling
+                        } else {
+                            cur_title += 1;
+                        }
+                        title_dir.close().unwrap();
+                        get_nth_dir_name(&books_dir, cur_title, &mut title_name);
+                        title_dir = books_dir.open_dir(title_name.as_str()).unwrap();
+                        chapters_count = count_subdirs(&title_dir, MAX_CHAPTERS);
+                        cur_chapter = 1;
                     } else {
-                        cur_dir += 1;
+                        cur_chapter += 1;
                     }
-                    dir_name.clear();
-                    write!(&mut dir_name, "{0: >04}", cur_dir).unwrap();
+                    chapter_name.clear();
+                    write!(&mut chapter_name, "{0: >04}", cur_chapter).unwrap();
                     cur_child_dir.close().unwrap();
-                    cur_child_dir = root_dir.open_dir(dir_name.as_str()).unwrap();
+                    cur_child_dir = title_dir.open_dir(chapter_name.as_str()).unwrap();
                     cur_dir_files_len = count_entries(&cur_child_dir, MAX_CHILD_FILES);
 
                     cur_page = 0;
@@ -574,15 +643,25 @@ fn main() -> ! {
                     if touch.left {
                         if cur_page < SKIP_PAGE {
                             // open pre chapter dir
-                            if cur_dir == 1 {
-                                cur_dir = root_dir_directories_len; //circling
+                            if cur_chapter == 1 {
+                                // Go to previous title's last chapter
+                                if cur_title == 1 {
+                                    cur_title = books_count; //circling
+                                } else {
+                                    cur_title = cur_title - 1;
+                                }
+                                title_dir.close().unwrap();
+                                get_nth_dir_name(&books_dir, cur_title, &mut title_name);
+                                title_dir = books_dir.open_dir(title_name.as_str()).unwrap();
+                                chapters_count = count_subdirs(&title_dir, MAX_CHAPTERS);
+                                cur_chapter = chapters_count;
                             } else {
-                                cur_dir = cur_dir - 1;
+                                cur_chapter = cur_chapter - 1;
                             }
-                            dir_name.clear();
-                            write!(&mut dir_name, "{0: >04}", cur_dir).unwrap();
+                            chapter_name.clear();
+                            write!(&mut chapter_name, "{0: >04}", cur_chapter).unwrap();
                             cur_child_dir.close().unwrap();
-                            cur_child_dir = root_dir.open_dir(dir_name.as_str()).unwrap();
+                            cur_child_dir = title_dir.open_dir(chapter_name.as_str()).unwrap();
                             cur_dir_files_len = count_entries(&cur_child_dir, MAX_CHILD_FILES);
                             cur_page = cur_dir_files_len - 1; // pre chapter dir's last
                             indicator_refresh = true;
@@ -602,15 +681,25 @@ fn main() -> ! {
                     if touch.right {
                         if cur_page > (cur_dir_files_len - 1) - SKIP_PAGE {
                             // open next chapter dir
-                            if cur_dir == root_dir_directories_len {
-                                cur_dir = 1; //circling
+                            if cur_chapter == chapters_count {
+                                // Go to next title's first chapter
+                                if cur_title == books_count {
+                                    cur_title = 1; //circling
+                                } else {
+                                    cur_title = cur_title + 1;
+                                }
+                                title_dir.close().unwrap();
+                                get_nth_dir_name(&books_dir, cur_title, &mut title_name);
+                                title_dir = books_dir.open_dir(title_name.as_str()).unwrap();
+                                chapters_count = count_subdirs(&title_dir, MAX_CHAPTERS);
+                                cur_chapter = 1;
                             } else {
-                                cur_dir = cur_dir + 1;
+                                cur_chapter = cur_chapter + 1;
                             }
-                            dir_name.clear();
-                            write!(&mut dir_name, "{0: >04}", cur_dir).unwrap();
+                            chapter_name.clear();
+                            write!(&mut chapter_name, "{0: >04}", cur_chapter).unwrap();
                             cur_child_dir.close().unwrap();
-                            cur_child_dir = root_dir.open_dir(dir_name.as_str()).unwrap();
+                            cur_child_dir = title_dir.open_dir(chapter_name.as_str()).unwrap();
                             cur_dir_files_len = count_entries(&cur_child_dir, MAX_CHILD_FILES);
                             cur_page = 0; // next chapter dir's first
                             indicator_refresh = true;
@@ -631,8 +720,9 @@ fn main() -> ! {
                     }
 
                     if touch.top {
+                        // Chapter indicator mode - navigate chapters within current title
                         let top_indicator_pos_current: u32 = HEIGHT as u32
-                            - ((cur_dir as u32 * HEIGHT as u32) / root_dir_directories_len as u32);
+                            - ((cur_chapter as u32 * HEIGHT as u32) / chapters_count as u32);
                         eink_display.write_top_indicator(true, top_indicator_pos_current, 0);
                         let mut top_pre_status_var = top_indicator_pos_current;
 
@@ -647,14 +737,14 @@ fn main() -> ! {
                             );
 
                             if touch.left {
-                                if cur_dir == 1 {
-                                    cur_dir = root_dir_directories_len; //circling
+                                if cur_chapter == 1 {
+                                    cur_chapter = chapters_count; //circling within title
                                 } else {
-                                    cur_dir = cur_dir - 1;
+                                    cur_chapter = cur_chapter - 1;
                                 }
                                 let top_indicator_pos_current: u32 = HEIGHT as u32
-                                    - ((cur_dir as u32 * HEIGHT as u32)
-                                        / root_dir_directories_len as u32);
+                                    - ((cur_chapter as u32 * HEIGHT as u32)
+                                        / chapters_count as u32);
                                 eink_display.write_top_indicator(
                                     false,
                                     top_indicator_pos_current,
@@ -663,14 +753,14 @@ fn main() -> ! {
                                 top_pre_status_var = top_indicator_pos_current;
                             }
                             if touch.right {
-                                if cur_dir == root_dir_directories_len {
-                                    cur_dir = 1; //circling
+                                if cur_chapter == chapters_count {
+                                    cur_chapter = 1; //circling within title
                                 } else {
-                                    cur_dir = cur_dir + 1;
+                                    cur_chapter = cur_chapter + 1;
                                 }
                                 let top_indicator_pos_current: u32 = HEIGHT as u32
-                                    - ((cur_dir as u32 * HEIGHT as u32)
-                                        / root_dir_directories_len as u32);
+                                    - ((cur_chapter as u32 * HEIGHT as u32)
+                                        / chapters_count as u32);
                                 eink_display.write_top_indicator(
                                     false,
                                     top_indicator_pos_current,
@@ -679,26 +769,22 @@ fn main() -> ! {
                                 top_pre_status_var = top_indicator_pos_current;
                             }
                             if touch.center {
-                                dir_name.clear();
-                                write!(&mut dir_name, "{0: >04}", cur_dir).unwrap();
+                                chapter_name.clear();
+                                write!(&mut chapter_name, "{0: >04}", cur_chapter).unwrap();
                                 cur_child_dir.close().unwrap();
-                                cur_child_dir = root_dir.open_dir(dir_name.as_str()).unwrap();
+                                cur_child_dir = title_dir.open_dir(chapter_name.as_str()).unwrap();
                                 cur_dir_files_len = count_entries(&cur_child_dir, MAX_CHILD_FILES);
 
                                 cur_page = 0;
                                 break 'inner;
                             }
-                            /* need pending cur_dir maybe
-                            if top_left_pin_value > TOUCH_TOP_THRESHOLD {
-                                break 'chaptor_indicator;
-                            }
-                            */
+                            /* TODO: Add title navigation mode with another touch.top */
                         }
                     }
                 }
             }
         }
-        let current_page_id = PageId::new(cur_dir, cur_page);
+        let current_page_id = PageId::new(cur_title, cur_chapter, cur_page);
 
         // Try to get from cache, or load from SD card
         let (buf, was_cached) = page_cache.get_or_alloc(current_page_id);
@@ -721,12 +807,10 @@ fn main() -> ! {
         // Mark current as displayed (index swap, no memory copy)
         page_cache.mark_displayed();
 
-        // Save state to flash
-        flash
-            .write(
-                flash_addr,
-                &(((cur_dir as u32) << 16) + (cur_page as u32)).to_be_bytes(),
-            )
-            .unwrap();
+        // Save state to flash: title (12 bits) | chapter (10 bits) | page (10 bits) = 32 bits
+        let state: u32 = ((cur_title as u32) << 20)
+            | ((cur_chapter as u32 & 0x3FF) << 10)
+            | (cur_page as u32 & 0x3FF);
+        flash.write(flash_addr, &state.to_be_bytes()).unwrap();
     }
 }
