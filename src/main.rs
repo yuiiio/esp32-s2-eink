@@ -51,7 +51,6 @@ use touch::{TouchInput, TouchThresholds};
 mod page_cache;
 use page_cache::{PageCache, PageId};
 
-/*
 static mut EP_MEMORY: [u32; 1024] = [0; 1024];
 
 struct SerialWrapper<'b, B: usb_device::class_prelude::UsbBus>(SerialPort<'b, B>);
@@ -61,7 +60,6 @@ impl<B: usb_device::class_prelude::UsbBus> core::fmt::Write for SerialWrapper<'_
         Ok(())
     }
 }
-*/
 
 struct FakeTimesource {}
 
@@ -178,7 +176,6 @@ fn main() -> ! {
     let mut led = Output::new(peripherals.GPIO15, Level::High, OutputConfig::default());
 
     /*usb serial debug*/
-    /*
     let usb = Usb::new(peripherals.USB0, peripherals.GPIO20, peripherals.GPIO19);
     let usb_bus = UsbBus::new(usb, unsafe { &mut *addr_of_mut!(EP_MEMORY) });
 
@@ -227,7 +224,6 @@ fn main() -> ! {
     }
 
     writeln!(serial, "\nSuccess serialWrapper test\n").unwrap();
-    */
 
     /* flash rom */
     let mut bytes = [0u8; 4];
@@ -497,31 +493,27 @@ fn main() -> ! {
     }
     */
 
-    /*
     // benchmark
     write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();
-    match open_2bpp_image(&mut cur_child_dir, next_buf, &file_name) {
+    let t0 = esp_hal::time::Instant::now();
+    let current_page_id = PageId::new(cur_title, cur_chapter, cur_page);
+    let (buf, was_cached) = page_cache.get_or_alloc(current_page_id);
+
+    match  open_2bpp_image(&mut cur_child_dir, buf, &file_name) {
         Ok(_) => {
             let t1 = esp_hal::time::Instant::now();
-            /*
-            eink_display.write_all(WHITE_FOUR_PIXEL);
-            eink_display.write_all(WHITE_FOUR_PIXEL);
-            eink_display.write_all(BLACK_FOUR_PIXEL);
-            */
-            eink_display.write_2bpp_image_rev(pre_buf);
-
-            core::mem::swap(&mut pre_buf, &mut next_buf);
-
-            eink_display.write_2bpp_image(pre_buf);
+            eink_display.write_2bpp_image_rev(page_cache.prev_buffer());
+            eink_display.write_2bpp_image(page_cache.current_buffer());
             let t2 = esp_hal::time::Instant::now();
 
             let elapsed = t2 - t1;
+            let t0_elapsed = t1 - t0;
             loop {
                 if usb_dev.poll(&mut [&mut serial.0]) {
                     break;
                 }
             }
-            writeln!(serial, "benchmark elapsed: {}\n", elapsed).unwrap();
+            writeln!(serial, "benchmark elapsed: load:{}, display:{}\n", t0_elapsed, elapsed).unwrap();
             loop {
                 if usb_dev.poll(&mut [&mut serial.0]) {
                     break;
@@ -530,7 +522,6 @@ fn main() -> ! {
         }
         Err(_) => {}
     }
-    */
 
     led.set_low();
     loop {
