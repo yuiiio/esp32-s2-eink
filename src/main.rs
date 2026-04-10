@@ -51,20 +51,6 @@ use touch::{TouchInput, TouchThresholds};
 mod page_cache;
 use page_cache::{PageCache, PageId};
 
-//static PSRAM_ALLOCATOR: esp_alloc::EspHeap = esp_alloc::EspHeap::empty();
-// seems conflicts with global allocator maybe current esp-hal issue.
-
-fn init_psram_heap(start: *mut u8, size: usize) {
-    unsafe {
-        //PSRAM_ALLOCATOR.add_region(esp_alloc::HeapRegion::new(
-        esp_alloc::HEAP.add_region(esp_alloc::HeapRegion::new(
-            start,
-            size,
-            esp_alloc::MemoryCapability::External.into(), // Internal ?
-        ));
-    }
-}
-
 /*
 static mut EP_MEMORY: [u32; 1024] = [0; 1024];
 
@@ -174,8 +160,7 @@ where
 fn main() -> ! {
     let peripherals =
         esp_hal::init(esp_hal::Config::default().with_cpu_clock(esp_hal::clock::CpuClock::max()));
-    let (start, size) = psram::psram_raw_parts(&peripherals.PSRAM);
-    init_psram_heap(start, size);
+    esp_alloc::psram_allocator!(peripherals.PSRAM, esp_hal::psram);
 
     /* enable dedicated gpio peripheral */
     SYSTEM::regs()

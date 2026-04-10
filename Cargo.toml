@@ -12,8 +12,8 @@ esp-backtrace = { version = "0.18.1", features = [
     "panic-handler",
     "println",
 ] }
-esp-hal = { git = "https://github.com/esp-rs/esp-hal.git", features = [ "esp32s2", "unstable", "psram" ] }
-# esp-hal = { path = "../esp-hal/esp-hal/", features = [ "esp32s2", "unstable", "psram" ] }
+esp-hal = { git = "https://github.com/esp-rs/esp-hal.git", features = [ "esp32s2", "unstable" ] }
+# esp-hal = { path = "../esp-hal/esp-hal/", features = [ "esp32s2", "unstable"  ] }
 esp-println = { version = "0.16.1", features = ["esp32s2", "log-04"] }
 log = { version = "0.4.26" }
 embedded-sdmmc = { git = "https://github.com/rust-embedded-community/embedded-sdmmc-rs.git" }
