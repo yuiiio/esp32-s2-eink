@@ -147,9 +147,7 @@ where
 {
     let file = cur_dir.open_file_in_dir(file_name, Mode::ReadOnly)?;
 
-    let mut tiff_header = [0u8; 8];
-    file.read(&mut tiff_header)?; // first 8 bytes is annotation header
-
+    file.seek_from_start(8)?; // first 8 bytes is annotation header
     file.read(img_buf)?;
     Ok(())
 }
