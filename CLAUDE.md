@@ -52,14 +52,25 @@ Images must be TIFF, 1448x1072, 2-bit depth, uncompressed. Output goes to number
 - Uses inline assembly (`wur.gpio_out`) for fast 8-bit parallel writes
 - Key methods: `write_2bpp_image()`, `write_all()`, `write_top_indicator()`, `write_bottom_indicator()`
 
+**src/touch.rs** - Capacitive touch input:
+- `TouchInput` struct handles ADC-based touch sensing
+- Pulse charging with configurable thresholds for 4 zones
+
+**src/page_cache.rs** - PSRAM page cache:
+- `PageCache` manages 5 page buffers (~1.9MB total) with LRU eviction
+- Supports prefetching and chapter/title invalidation
+
 ## SD Card File Structure
 
 ```
-/sdcard/
-  0000/       # Chapter directories (0000-9999)
-    000.tif   # Page files (000-999)
-    001.tif
-  0001/
+/sdcard/BOOKS/
+  TITLE1/           # Title directories (8.3 format)
+    0001/           # Chapter directories (0001-9999)
+      000.tif       # Page files (000-999)
+      001.tif
+    0002/
+      ...
+  TITLE2/
     ...
 ```
 
