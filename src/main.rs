@@ -148,7 +148,8 @@ where
     let file = cur_dir.open_file_in_dir(file_name, Mode::ReadOnly)?;
 
     file.seek_from_start(8)?; // first 8 bytes is annotation header
-    file.read(img_buf)?;
+    // Use multi-block read with 64 blocks (32KB) at a time for better performance
+    file.read_multi::<64>(img_buf)?;
     Ok(())
 }
 
