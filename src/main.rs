@@ -17,6 +17,8 @@ use esp_backtrace as _;
 use esp_hal::{
     analog::adc::{Adc, AdcConfig, Attenuation},
     delay::Delay,
+    dma::{DmaRxBuf, DmaTxBuf},
+    dma_buffers,
     gpio::{Level, Output, OutputConfig, AnyPin, Pin},
     main,
     otg_fs::{Usb, UsbBus},
@@ -236,11 +238,16 @@ fn main() -> ! {
 
     // Flash format: title (12 bits) | chapter (10 bits) | page (10 bits) = 32 bits
 
-    /* sd card */
+    /* sd card with DMA */
     let sclk = peripherals.GPIO36;
     let miso = peripherals.GPIO37;
     let mosi = peripherals.GPIO35;
     let cs = Output::new(peripherals.GPIO34, Level::High, OutputConfig::default());
+
+    // DMA buffers - 512 bytes for SD card block size + some margin
+    let (rx_buffer, rx_descriptors, tx_buffer, tx_descriptors) = dma_buffers!(1024);
+    let dma_rx_buf = DmaRxBuf::new(rx_descriptors, rx_buffer).unwrap();
+    let dma_tx_buf = DmaTxBuf::new(tx_descriptors, tx_buffer).unwrap();
 
     let spi = Spi::new(
         peripherals.SPI2,
@@ -251,7 +258,9 @@ fn main() -> ! {
     .unwrap()
     .with_sck(sclk)
     .with_mosi(mosi)
-    .with_miso(miso);
+    .with_miso(miso)
+    .with_dma(peripherals.DMA_SPI2)
+    .with_buffers(dma_rx_buf, dma_tx_buf);
 
     let spi_device = ExclusiveDevice::new_no_delay(spi, cs).unwrap();
 
