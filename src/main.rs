@@ -21,7 +21,7 @@ use esp_hal::{
     dma_buffers,
     gpio::{Level, Output, OutputConfig, AnyPin, Pin},
     main,
-    otg_fs::{Usb, UsbBus},
+    //otg_fs::{Usb, UsbBus},
     peripherals::{DEDICATED_GPIO, GPIO, IO_MUX, SYSTEM},
     psram,
     spi::master::Spi,
@@ -30,9 +30,10 @@ use esp_hal::{
 
 esp_bootloader_esp_idf::esp_app_desc!();
 
+/*
 use usb_device::prelude::{UsbDeviceBuilder, UsbVidPid};
 use usbd_serial::{SerialPort, USB_CLASS_CDC};
-
+*/
 use embedded_storage::{ReadStorage, Storage};
 use esp_storage::FlashStorage;
 
