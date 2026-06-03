@@ -5,7 +5,6 @@
 
 extern crate alloc;
 use alloc::string::String;
-use alloc::boxed::Box;
 
 use esp_alloc;
 
@@ -343,7 +342,8 @@ fn main() -> ! {
     let ckv = Output::new(peripherals.GPIO14, Level::High, OutputConfig::default());
     let spv = Output::new(peripherals.GPIO12, Level::High, OutputConfig::default());
 
-    let xcl = Output::new(peripherals.GPIO39, Level::High, OutputConfig::default());
+    let _xcl = Output::new(peripherals.GPIO39, Level::High, OutputConfig::default());
+    let xcl_mask =  1u32 << (39 - 32);
     let xle = Output::new(peripherals.GPIO40, Level::High, OutputConfig::default());
     let xoe = Output::new(peripherals.GPIO38, Level::High, OutputConfig::default());
     let xstl = Output::new(peripherals.GPIO33, Level::High, OutputConfig::default());
@@ -352,7 +352,7 @@ fn main() -> ! {
         mode1,
         ckv,
         spv,
-        xcl,
+        xcl_mask,
         xle,
         xoe,
         xstl,
