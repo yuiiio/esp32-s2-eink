@@ -198,15 +198,17 @@ XSTL,
 
     pub fn write_2bpp_image(&mut self, img_buf: &[u8; TWO_BPP_BUF_SIZE]) {
         for state in 0..2 {
-            let mut buf_pos: usize = 0;
             self.start_frame();
-
-            for _line in 0..HEIGHT {
+            let lut = unsafe {
+                LUT.get_unchecked(state)
+            };
+            for row in img_buf.chunks_exact(WIDTH/4) {
                 self.xstl.set_low();
                 /* can write 4 pixel for onece */
-                for _i in 0..(WIDTH / 4) {
-                    let b = LUT[state as usize][img_buf[buf_pos] as usize];
-                    buf_pos += 1;
+                for &src in row {
+                    let b = unsafe {
+                        *lut.get_unchecked(src as usize)
+                    };
                     // write 8bit
                     unsafe {
                         asm!("wur.gpio_out {0}", in(reg) b);
@@ -231,15 +233,17 @@ XSTL,
 
     pub fn write_2bpp_image_rev(&mut self, img_buf: &[u8; TWO_BPP_BUF_SIZE]) {
         for state in 0..1 {
-            let mut buf_pos: usize = 0;
             self.start_frame();
-
-            for _line in 0..HEIGHT {
+            let rev_lut = unsafe {
+                REVERSE_LUT.get_unchecked(state)
+            };
+            for row in img_buf.chunks_exact(WIDTH/4) {
                 self.xstl.set_low();
                 /* can write 4 pixel for onece */
-                for _i in 0..(WIDTH / 4) {
-                    let b = REVERSE_LUT[state as usize][img_buf[buf_pos] as usize];
-                    buf_pos += 1;
+                for &src in row {
+                    let b = unsafe {
+                        *rev_lut.get_unchecked(src as usize)
+                    };
                     // write 8bit
                     unsafe {
                         asm!("wur.gpio_out {0}", in(reg) b);
