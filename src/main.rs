@@ -10,7 +10,7 @@ use esp_alloc;
 
 use core::fmt::Write;
 use core::ops::ControlFlow;
-use core::ptr::addr_of_mut;
+//use core::ptr::addr_of_mut;
 
 use esp_backtrace as _;
 use esp_hal::{
@@ -22,7 +22,6 @@ use esp_hal::{
     main,
     //otg_fs::{Usb, UsbBus},
     peripherals::{DEDICATED_GPIO, GPIO, IO_MUX, SYSTEM},
-    psram,
     spi::master::Spi,
     time::Rate,
 };
@@ -362,7 +361,6 @@ fn main() -> ! {
         xle,
         xoe,
         xstl,
-        delay,
         _pin_guard,
     };
     eink_display.write_all(WHITE_FOUR_PIXEL);
@@ -373,7 +371,7 @@ fn main() -> ! {
         .expect("failed to open volume");
     let root_dir = volume0.open_root_dir().expect("failed to open volume");
 
-    const MAX_ROOT_DIRS: u16 = 9999;
+    //const MAX_ROOT_DIRS: u16 = 9999;
     const MAX_CHILD_FILES: u16 = 999;
 
     let mut chapter_name = String::with_capacity(5); //xxxx (chapter number)

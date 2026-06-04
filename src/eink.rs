@@ -4,8 +4,7 @@ use core::arch::asm;
 
 use esp_backtrace as _;
 use esp_hal::{
-    delay::Delay,
-    gpio::{Output, AnyPin},
+    gpio::AnyPin,
 };
 
 //GPIO0〜31 → OUT
@@ -30,6 +29,22 @@ impl<const PIN: u32> MyGpio<PIN> {
     #[inline(always)]
     pub fn set_low(&self) {
         unsafe { core::ptr::write_volatile(Self::REG_CLR, Self::MASK); }
+    }
+}
+
+fn nop_delay() {
+    let mut n = 15;
+    while n > 0 {
+        unsafe {
+            asm!(
+                "nop",
+                "nop",
+                "nop",
+                "nop",
+                options(nomem, nostack)
+            );
+        }
+        n -= 1;
     }
 }
 
@@ -130,7 +145,6 @@ const XSTL: u32,
     pub xle: MyGpio<XLE>,
     pub xoe: MyGpio<XOE>,
     pub xstl: MyGpio<XSTL>,
-    pub delay: Delay,
     pub _pin_guard: [AnyPin<'static>; 8],
 }
 
@@ -156,7 +170,7 @@ XSTL,
         self.mode1.set_high();
         self.spv.set_low();
         self.ckv.set_low();
-        self.delay.delay_micros(1);
+        nop_delay();
         self.ckv.set_high();
         self.spv.set_high();
     }
@@ -171,30 +185,6 @@ XSTL,
     // [0, 1] Draw black
     // [1, 0] Draw white
     // [1, 1] No action
-    #[allow(dead_code)]
-    fn write_row(&mut self, row_data: &[u8; WIDTH / 4]) {
-        self.xstl.set_low();
-        /* can write 4 pixel for onece */
-        for pos in 0..(WIDTH / 4) {
-            let four_pixels = row_data[pos];
-            // write 8bit
-            unsafe {
-                asm!("wur.gpio_out {0}", in(reg) four_pixels);
-            };
-            self.xcl.set_high();
-            self.xcl.set_low();
-        }
-        self.xstl.set_high();
-        self.xcl.set_high();
-        self.xcl.set_low();
-
-        self.xle.set_high();
-        self.xle.set_low();
-
-        self.ckv.set_low();
-        self.delay.delay_micros(1);
-        self.ckv.set_high();
-    }
 
     pub fn write_2bpp_image(&mut self, img_buf: &[u8; TWO_BPP_BUF_SIZE]) {
         for state in 0..2 {
@@ -224,7 +214,7 @@ XSTL,
                 self.xle.set_low();
 
                 self.ckv.set_low();
-                self.delay.delay_micros(1);
+                nop_delay();
                 self.ckv.set_high();
             }
             self.end_frame();
@@ -259,7 +249,7 @@ XSTL,
                 self.xle.set_low();
 
                 self.ckv.set_low();
-                self.delay.delay_micros(1);
+                nop_delay();
                 self.ckv.set_high();
             }
             self.end_frame();
@@ -286,7 +276,7 @@ XSTL,
             self.xle.set_low();
 
             self.ckv.set_low();
-            self.delay.delay_micros(1);
+            nop_delay();
             self.ckv.set_high();
         }
         self.end_frame();
@@ -329,6 +319,7 @@ XSTL,
                     self.xcl.set_high();
                     self.xcl.set_low();
                 }
+                nop_delay();
             }
 
             let in_current = status_var.abs_diff(line as u32) <= bar_half_height;
@@ -355,8 +346,8 @@ XSTL,
                     unsafe { asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL); }
                 }
                 for _i in 0..split_width_div4 {
+                    nop_delay();
                     self.xcl.set_high();
-                    self.delay.delay_micros(1);
                     self.xcl.set_low();
                 }
             }
@@ -364,6 +355,7 @@ XSTL,
             // slider body
             unsafe { asm!("wur.gpio_out {0}", in(reg) pixel); }
             for _i in 0..bar_width_div4 {
+                nop_delay();
                 self.xcl.set_high();
                 self.xcl.set_low();
             }
@@ -376,8 +368,8 @@ XSTL,
                     unsafe { asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL); }
                 }
                 for _i in 0..split_width_div4 {
+                    nop_delay();
                     self.xcl.set_high();
-                    self.delay.delay_micros(1);
                     self.xcl.set_low();
                 }
             }
@@ -386,6 +378,7 @@ XSTL,
             let remaining = (WIDTH / 4) - x_pos_div4 - slider_width_div4;
             if remaining > 0 {
                 unsafe { asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL); }
+                nop_delay();
                 for _i in 0..remaining {
                     self.xcl.set_high();
                     self.xcl.set_low();
@@ -400,7 +393,7 @@ XSTL,
             self.xle.set_low();
 
             self.ckv.set_low();
-            self.delay.delay_micros(1);
+            nop_delay();
             self.ckv.set_high();
         }
         self.end_frame();

@@ -58,6 +58,7 @@ impl PageCache {
     }
 
     /// Get buffer for a specific page if cached
+    #[allow(unused)]
     pub fn get(&self, page_id: PageId) -> Option<&[u8; TWO_BPP_BUF_SIZE]> {
         self.entries
             .iter()
@@ -134,6 +135,7 @@ impl PageCache {
 
     /// Prefetch a page into cache without setting it as current
     /// Returns buffer to fill if not already cached
+    #[allow(unused)]
     pub fn prefetch_slot(&mut self, page_id: PageId) -> Option<&mut [u8; TWO_BPP_BUF_SIZE]> {
         // Already cached?
         if self.contains(page_id) {
@@ -147,6 +149,7 @@ impl PageCache {
     }
 
     /// Find slot for prefetch (avoid current buffer)
+    #[allow(unused)]
     fn find_prefetch_slot(&self, target: PageId) -> usize {
         // First, try to find empty slot
         if let Some(idx) = self.entries.iter().position(|e| e.page_id.is_none()) {
@@ -173,6 +176,7 @@ impl PageCache {
     }
 
     /// Mark a prefetched page as current (when navigating to it)
+    #[allow(unused)]
     pub fn set_current(&mut self, page_id: PageId) -> bool {
         if let Some(idx) = self.entries.iter().position(|e| e.page_id == Some(page_id)) {
             self.current_idx = idx;
@@ -183,6 +187,7 @@ impl PageCache {
     }
 
     /// Invalidate all cache entries for a title/chapter
+    #[allow(unused)]
     pub fn invalidate_chapter(&mut self, title: u16, chapter: u16) {
         for entry in &mut self.entries {
             if let Some(id) = entry.page_id {
@@ -194,6 +199,7 @@ impl PageCache {
     }
 
     /// Invalidate all cache entries for a title
+    #[allow(unused)]
     pub fn invalidate_title(&mut self, title: u16) {
         for entry in &mut self.entries {
             if let Some(id) = entry.page_id {

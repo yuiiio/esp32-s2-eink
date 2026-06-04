@@ -21,9 +21,11 @@ pub struct TouchThresholds {
 }
 
 impl TouchThresholds {
+    /*
     pub const fn new(left: u16, right: u16, center: u16, top: u16) -> Self {
         Self { left, right, center, top }
     }
+    */
 
     pub const fn default_thresholds() -> Self {
         Self {
