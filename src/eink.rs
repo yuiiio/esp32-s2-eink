@@ -12,26 +12,25 @@ use esp_hal::{
 //GPIO32〜46 → OUT1
 const GPIO_OUT_W1TS_REG: *mut u32 = 0x3F404008 as *mut u32;
 const GPIO_OUT_W1TC_REG: *mut u32 = 0x3F40400C as *mut u32;
-
 const GPIO_OUT1_W1TS_REG: *mut u32 = 0x3F404014 as *mut u32;
 const GPIO_OUT1_W1TC_REG: *mut u32 = 0x3F404018 as *mut u32;
+// avoid hal runtime check for gpio set_high/low.
+pub struct MyGpio<const PIN: u32>;
 
-#[inline(always)]
-unsafe fn gpio1_set(mask:u32)
-{
-    core::ptr::write_volatile(
-        GPIO_OUT1_W1TS_REG,
-        mask
-    );
-}
+impl<const PIN: u32> MyGpio<PIN> {
+    const REG_SET: *mut u32 = if PIN < 32 { GPIO_OUT_W1TS_REG as *mut u32 } else { GPIO_OUT1_W1TS_REG as *mut u32 };
+    const REG_CLR: *mut u32 = if PIN < 32 { GPIO_OUT_W1TC_REG as *mut u32 } else { GPIO_OUT1_W1TC_REG as *mut u32 };
+    const MASK: u32 = 1u32 << (if PIN < 32 { PIN } else { PIN - 32 });
 
-#[inline(always)]
-unsafe fn gpio1_clear(mask:u32)
-{
-    core::ptr::write_volatile(
-        GPIO_OUT1_W1TC_REG,
-        mask
-    );
+    #[inline(always)]
+    pub fn set_high(&self) {
+        unsafe { core::ptr::write_volatile(Self::REG_SET, Self::MASK); }
+    }
+
+    #[inline(always)]
+    pub fn set_low(&self) {
+        unsafe { core::ptr::write_volatile(Self::REG_CLR, Self::MASK); }
+    }
 }
 
 /*
@@ -114,20 +113,44 @@ static REVERSE_LUT: [[u8; 256]; 2] = {
     table
 };
 
-pub struct EinkDisplay {
-    pub mode1: Output<'static>,
-    pub ckv: Output<'static>,
-    pub spv: Output<'static>,
+pub struct EinkDisplay<
+const MODE1: u32,
+const CKV: u32,
+const SPV: u32,
+const XCL: u32,
+const XLE: u32,
+const XOE: u32,
+const XSTL: u32,
+> {
+    pub mode1: MyGpio<MODE1>,
+    pub ckv: MyGpio<CKV>,
+    pub spv: MyGpio<SPV>,
 
-    pub xcl_mask: u32,
-    pub xle: Output<'static>,
-    pub xoe: Output<'static>,
-    pub xstl: Output<'static>,
+    pub xcl: MyGpio<XCL>,
+    pub xle: MyGpio<XLE>,
+    pub xoe: MyGpio<XOE>,
+    pub xstl: MyGpio<XSTL>,
     pub delay: Delay,
     pub _pin_guard: [AnyPin<'static>; 8],
 }
 
-impl EinkDisplay {
+impl<
+const MODE1: u32,
+const CKV: u32,
+const SPV: u32,
+const XCL: u32,
+const XLE: u32,
+const XOE: u32,
+const XSTL: u32,
+> EinkDisplay<
+MODE1,
+CKV,
+SPV,
+XCL,
+XLE,
+XOE,
+XSTL, 
+> {
     fn start_frame(&mut self) {
         self.xoe.set_high();
         self.mode1.set_high();
@@ -158,16 +181,12 @@ impl EinkDisplay {
             unsafe {
                 asm!("wur.gpio_out {0}", in(reg) four_pixels);
             };
-            unsafe {
-                gpio1_set(self.xcl_mask);
-                gpio1_clear(self.xcl_mask);
-            };
+            self.xcl.set_high();
+            self.xcl.set_low();
         }
         self.xstl.set_high();
-        unsafe {
-            gpio1_set(self.xcl_mask);
-            gpio1_clear(self.xcl_mask);
-        };
+        self.xcl.set_high();
+        self.xcl.set_low();
 
         self.xle.set_high();
         self.xle.set_low();
@@ -192,16 +211,12 @@ impl EinkDisplay {
                     unsafe {
                         asm!("wur.gpio_out {0}", in(reg) b);
                     };
-                    unsafe {
-                        gpio1_set(self.xcl_mask);
-                        gpio1_clear(self.xcl_mask);
-                    };
+                    self.xcl.set_high();
+                    self.xcl.set_low();
                 }
                 self.xstl.set_high();
-                unsafe {
-                    gpio1_set(self.xcl_mask);
-                    gpio1_clear(self.xcl_mask);
-                };
+                self.xcl.set_high();
+                self.xcl.set_low();
 
                 self.xle.set_high();
                 self.xle.set_low();
@@ -229,16 +244,12 @@ impl EinkDisplay {
                     unsafe {
                         asm!("wur.gpio_out {0}", in(reg) b);
                     };
-                    unsafe {
-                        gpio1_set(self.xcl_mask);
-                        gpio1_clear(self.xcl_mask);
-                    };
+                    self.xcl.set_high();
+                    self.xcl.set_low();
                 }
                 self.xstl.set_high();
-                unsafe {
-                    gpio1_set(self.xcl_mask);
-                    gpio1_clear(self.xcl_mask);
-                };
+                self.xcl.set_high();
+                self.xcl.set_low();
 
                 self.xle.set_high();
                 self.xle.set_low();
@@ -260,16 +271,12 @@ impl EinkDisplay {
             self.xstl.set_low();
             /* can write 4 pixel for onece */
             for _pos in 0..(WIDTH / 4) {
-                unsafe {
-                    gpio1_set(self.xcl_mask);
-                    gpio1_clear(self.xcl_mask);
-                };
+                self.xcl.set_high();
+                self.xcl.set_low();
             }
             self.xstl.set_high();
-            unsafe {
-                gpio1_set(self.xcl_mask);
-                gpio1_clear(self.xcl_mask);
-            };
+            self.xcl.set_high();
+            self.xcl.set_low();
 
             self.xle.set_high();
             self.xle.set_low();
@@ -315,10 +322,8 @@ impl EinkDisplay {
             if x_pos_div4 > 0 {
                 unsafe { asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL); }
                 for _i in 0..x_pos_div4 {
-                    unsafe {
-                        gpio1_set(self.xcl_mask);
-                        gpio1_clear(self.xcl_mask);
-                    };
+                    self.xcl.set_high();
+                    self.xcl.set_low();
                 }
             }
 
@@ -346,21 +351,17 @@ impl EinkDisplay {
                     unsafe { asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL); }
                 }
                 for _i in 0..split_width_div4 {
-                    unsafe {
-                        gpio1_set(self.xcl_mask);
-                        self.delay.delay_micros(1);
-                        gpio1_clear(self.xcl_mask);
-                    };
+                    self.xcl.set_high();
+                    self.delay.delay_micros(1);
+                    self.xcl.set_low();
                 }
             }
 
             // slider body
             unsafe { asm!("wur.gpio_out {0}", in(reg) pixel); }
             for _i in 0..bar_width_div4 {
-                unsafe {
-                    gpio1_set(self.xcl_mask);
-                    gpio1_clear(self.xcl_mask);
-                };
+                self.xcl.set_high();
+                self.xcl.set_low();
             }
 
             // right split bar
@@ -371,11 +372,9 @@ impl EinkDisplay {
                     unsafe { asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL); }
                 }
                 for _i in 0..split_width_div4 {
-                    unsafe {
-                        gpio1_set(self.xcl_mask);
-                        self.delay.delay_micros(1);
-                        gpio1_clear(self.xcl_mask);
-                    };
+                    self.xcl.set_high();
+                    self.delay.delay_micros(1);
+                    self.xcl.set_low();
                 }
             }
 
@@ -384,18 +383,14 @@ impl EinkDisplay {
             if remaining > 0 {
                 unsafe { asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL); }
                 for _i in 0..remaining {
-                    unsafe {
-                        gpio1_set(self.xcl_mask);
-                        gpio1_clear(self.xcl_mask);
-                    };
+                    self.xcl.set_high();
+                    self.xcl.set_low();
                 }
             }
 
             self.xstl.set_high();
-            unsafe {
-                gpio1_set(self.xcl_mask);
-                gpio1_clear(self.xcl_mask);
-            };
+            self.xcl.set_high();
+            self.xcl.set_low();
 
             self.xle.set_high();
             self.xle.set_low();

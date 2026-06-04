@@ -43,7 +43,7 @@ use embedded_sdmmc::{
 };
 
 mod eink;
-use eink::{EinkDisplay, TWO_BPP_BUF_SIZE, HEIGHT, BLACK_FOUR_PIXEL, WHITE_FOUR_PIXEL};
+use eink::{EinkDisplay, TWO_BPP_BUF_SIZE, HEIGHT, BLACK_FOUR_PIXEL, WHITE_FOUR_PIXEL, MyGpio};
 
 mod touch;
 use touch::{TouchInput, TouchThresholds};
@@ -338,21 +338,27 @@ fn main() -> ! {
         .modify(|_, w| unsafe { w.mcu_sel().bits(1) }); // set to Function 1
     }
 
-    let mode1 = Output::new(peripherals.GPIO11, Level::High, OutputConfig::default());
-    let ckv = Output::new(peripherals.GPIO14, Level::High, OutputConfig::default());
-    let spv = Output::new(peripherals.GPIO12, Level::High, OutputConfig::default());
+    let _mode1 = Output::new(peripherals.GPIO11, Level::High, OutputConfig::default());
+    let mode1 = MyGpio::<11>;
+    let _ckv = Output::new(peripherals.GPIO14, Level::High, OutputConfig::default());
+    let ckv = MyGpio::<14>;
+    let _spv = Output::new(peripherals.GPIO12, Level::High, OutputConfig::default());
+    let spv = MyGpio::<12>;
 
     let _xcl = Output::new(peripherals.GPIO39, Level::High, OutputConfig::default());
-    let xcl_mask =  1u32 << (39 - 32);
-    let xle = Output::new(peripherals.GPIO40, Level::High, OutputConfig::default());
-    let xoe = Output::new(peripherals.GPIO38, Level::High, OutputConfig::default());
-    let xstl = Output::new(peripherals.GPIO33, Level::High, OutputConfig::default());
+    let xcl = MyGpio::<39>;
+    let _xle = Output::new(peripherals.GPIO40, Level::High, OutputConfig::default());
+    let xle = MyGpio::<40>;
+    let _xoe = Output::new(peripherals.GPIO38, Level::High, OutputConfig::default());
+    let xoe = MyGpio::<38>;
+    let _xstl = Output::new(peripherals.GPIO33, Level::High, OutputConfig::default());
+    let xstl = MyGpio::<33>;
 
     let mut eink_display = EinkDisplay {
         mode1,
         ckv,
         spv,
-        xcl_mask,
+        xcl,
         xle,
         xoe,
         xstl,
