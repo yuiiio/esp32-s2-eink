@@ -41,6 +41,8 @@ use embedded_sdmmc::{
     VolumeManager,
 };
 
+mod fontdata;
+
 mod eink;
 use eink::{EinkDisplay, TWO_BPP_BUF_SIZE, HEIGHT, BLACK_FOUR_PIXEL, WHITE_FOUR_PIXEL, MyGpio};
 
@@ -536,6 +538,9 @@ fn main() -> ! {
     }
     */
 
+    eink_display.write_all(WHITE_FOUR_PIXEL);
+    let text_data = "hello world";
+    eink_display.write_fontbuf_at_pos(text_data, 0,0);
     led.set_low();
     loop {
         'inner: loop {

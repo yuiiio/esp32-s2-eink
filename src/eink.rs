@@ -7,6 +7,8 @@ use esp_hal::{
     gpio::AnyPin,
 };
 
+use crate::fontdata::{FONT_GLYPHS, FONT_WIDTH, FONT_HEIGHT};
+
 //GPIO0〜31 → OUT
 //GPIO32〜46 → OUT1
 const GPIO_OUT_W1TS_REG: *mut u32 = 0x3F404008 as *mut u32;
@@ -440,6 +442,100 @@ XSTL,
             status_var,
             pre_status_var,
         );
+    }
+}
+
+impl<
+const MODE1: u32,
+const CKV: u32,
+const SPV: u32,
+const XCL: u32,
+const XLE: u32,
+const XOE: u32,
+const XSTL: u32,
+> EinkDisplay<MODE1, CKV, SPV, XCL, XLE, XOE, XSTL>
+{
+    /// 文字列スライスを指定位置にフォントで表示（バッファ展開せず、直接画面に pixel 書き込み）
+    /// - str: 表示する文字列
+    /// - x: 文字列の左端位置（ピクセル、4 の倍数）
+    /// - y: 文字列の左端位置（ピクセル、4 の倍数）
+    /// - 画面端を超える文字は無視
+    pub fn write_fontbuf_at_pos(
+        &mut self,
+        str: &str,
+        x: usize,
+        y: usize,
+    ) {
+        const FONT_WIDTH: usize = 4;  // pixels per glyph (1bpp pixel font, 4 pixels = 4 glyph bits)
+        const FONT_HEIGHT: usize = 4; // pixels per glyph height
+
+        let display_chars = str.as_bytes();
+        let x_div4 = x / 4;
+        let y_div4 = y / 4;
+        let remaining_width = WIDTH / 4;
+        let remaining_height = HEIGHT / 4;
+
+        let mut current_x = x_div4;
+        let mut current_y = y_div4;
+
+        for &byte in display_chars {
+            let glyph_index = (byte - 0x20) as usize;
+            let glyph = &FONT_GLYPHS[glyph_index];
+
+            for bit_row in 0..FONT_HEIGHT {
+                let bit_row_offset = bit_row * FONT_WIDTH / 8;
+                for bit_col in 0..FONT_WIDTH {
+                    let byte_idx = bit_row_offset + bit_col / 8;
+                    let bit_idx = 7 - (bit_col % 8);
+                    let pixel = glyph[byte_idx] & (1 << bit_idx) != 0;
+
+                    if pixel {
+                        // 画面端をチェック
+                        if current_x + bit_col >= remaining_width || current_y + bit_row >= remaining_height {
+                            break;
+                        }
+
+                        // 描画開始位置まで NONE_FOUR_PIXEL でスキップ
+                        if current_x > 0 {
+                            unsafe {
+                                asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL);
+                            }
+                            for _i in 0..current_x {
+                                self.xcl.set_high();
+                                self.xcl.set_low();
+                            }
+                            nop_delay();
+                        }
+
+                        // 描画
+                        unsafe {
+                            asm!("wur.gpio_out {0}", in(reg) BLACK_FOUR_PIXEL);
+                        }
+                        for _i in 0..1 {
+                            self.xcl.set_high();
+                            self.xcl.set_low();
+                        }
+                        nop_delay();
+
+                        // 次の行への移動
+                        current_y += 1;
+
+                        // 行移動時のクリア
+                        if current_y > 0 && current_y <= remaining_height {
+                            unsafe {
+                                asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL);
+                            }
+                            for _i in 0..current_x {
+                                self.xcl.set_high();
+                                self.xcl.set_low();
+                            }
+                            nop_delay();
+                        }
+                    }
+                }
+            }
+            current_x += 1;
+        }
     }
 }
 
