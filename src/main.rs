@@ -538,9 +538,8 @@ fn main() -> ! {
     }
     */
 
-    eink_display.write_all(WHITE_FOUR_PIXEL);
     let text_data = "hello world";
-    eink_display.write_fontbuf_at_pos(text_data, 0,0);
+    eink_display.write_fontbuf_at_pos(text_data, 500,500);
     led.set_low();
     loop {
         'inner: loop {

@@ -7,7 +7,7 @@ use esp_hal::{
     gpio::AnyPin,
 };
 
-use crate::fontdata::{FONT_GLYPHS, FONT_WIDTH, FONT_HEIGHT};
+use crate::fontdata::{FONT_GLYPHS, FONT_WIDTH, FONT_BYTE_HEIGHT};
 
 //GPIO0〜31 → OUT
 //GPIO32〜46 → OUT1
@@ -62,10 +62,10 @@ const DPORT_RST_EN_DEDICATED_GPIO: usize = 1 << 7;
 */
 
 /* eink display */
-pub const HEIGHT: usize = 1072;
-pub const WIDTH: usize = 1448;
+pub const WIDTH: usize = 1072;
+pub const HEIGHT: usize = 1448;
 
-pub const TWO_BPP_BUF_SIZE: usize = WIDTH * HEIGHT * 2 / 8;
+pub const TWO_BPP_BUF_SIZE: usize = HEIGHT * WIDTH * 2 / 8;
 
 pub const BLACK_FOUR_PIXEL: u8 = 0b01010101;
 pub const WHITE_FOUR_PIXEL: u8 = 0b10101010;
@@ -194,7 +194,7 @@ XSTL,
             let lut = unsafe {
                 LUT.get_unchecked(state)
             };
-            for row in img_buf.chunks_exact(WIDTH/4) {
+            for row in img_buf.chunks_exact(HEIGHT/4) {
                 self.xstl.set_low();
                 /* can write 4 pixel for onece */
                 for &src in row {
@@ -229,7 +229,7 @@ XSTL,
             let rev_lut = unsafe {
                 REVERSE_LUT.get_unchecked(state)
             };
-            for row in img_buf.chunks_exact(WIDTH/4) {
+            for row in img_buf.chunks_exact(HEIGHT/4) {
                 self.xstl.set_low();
                 /* can write 4 pixel for onece */
                 for &src in row {
@@ -263,10 +263,10 @@ XSTL,
             asm!("wur.gpio_out {0}", in(reg) solid_pixel);
         }
         self.start_frame();
-        for _line in 0..HEIGHT {
+        for _line in 0..WIDTH {
             self.xstl.set_low();
             /* can write 4 pixel for onece */
-            for _pos in 0..(WIDTH / 4) {
+            for _pos in 0..(HEIGHT / 4) {
                 self.xcl.set_high();
                 self.xcl.set_low();
             }
@@ -286,14 +286,14 @@ XSTL,
 
     /// Generalized slider drawing at any horizontal position
     /// - x_pos: horizontal position in pixels (must be multiple of 4)
-    /// - slider_width: width in pixels (must be multiple of 4)
+    /// - slider_height: height in pixels (must be multiple of 4)
     /// - bar_half_height: half height of the slider knob
     /// - draw_split_left: draw separator line on left edge
     /// - draw_split_right: draw separator line on right edge
     pub fn write_slider(
         &mut self,
-        x_pos: usize,
-        slider_width: usize,
+        y_pos: usize,
+        slider_height: usize,
         bar_half_height: u32,
         draw_split_left: bool,
         draw_split_right: bool,
@@ -301,17 +301,17 @@ XSTL,
         status_var: u32,
         pre_status_var: u32,
     ) {
-        const SPLIT_WIDTH: usize = 4; // pixels
-        let x_pos_div4 = x_pos / 4;
-        let slider_width_div4 = slider_width / 4;
-        let split_width_div4 = SPLIT_WIDTH / 4;
+        const SPLIT_HEIGHT: usize = 4; // pixels
+        let x_pos_div4 = y_pos / 4;
+        let slider_height_div4 = slider_height / 4;
+        let split_height_div4 = SPLIT_HEIGHT / 4;
 
-        let left_split = if draw_split_left { split_width_div4 } else { 0 };
-        let right_split = if draw_split_right { split_width_div4 } else { 0 };
-        let bar_width_div4 = slider_width_div4 - left_split - right_split;
+        let left_split = if draw_split_left { split_height_div4 } else { 0 };
+        let right_split = if draw_split_right { split_height_div4 } else { 0 };
+        let bar_height_div4 = slider_height_div4 - left_split - right_split;
 
         self.start_frame();
-        for line in 0..HEIGHT {
+        for line in 0..WIDTH {
             self.xstl.set_low();
 
             // skip pixels before slider
@@ -347,7 +347,7 @@ XSTL,
                 } else {
                     unsafe { asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL); }
                 }
-                for _i in 0..split_width_div4 {
+                for _i in 0..split_height_div4 {
                     nop_delay();
                     self.xcl.set_high();
                     self.xcl.set_low();
@@ -356,7 +356,7 @@ XSTL,
 
             // slider body
             unsafe { asm!("wur.gpio_out {0}", in(reg) pixel); }
-            for _i in 0..bar_width_div4 {
+            for _i in 0..bar_height_div4 {
                 nop_delay();
                 self.xcl.set_high();
                 self.xcl.set_low();
@@ -369,7 +369,7 @@ XSTL,
                 } else {
                     unsafe { asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL); }
                 }
-                for _i in 0..split_width_div4 {
+                for _i in 0..split_height_div4 {
                     nop_delay();
                     self.xcl.set_high();
                     self.xcl.set_low();
@@ -377,7 +377,7 @@ XSTL,
             }
 
             // skip pixels after slider
-            let remaining = (WIDTH / 4) - x_pos_div4 - slider_width_div4;
+            let remaining = (HEIGHT / 4) - x_pos_div4 - slider_height_div4;
             if remaining > 0 {
                 unsafe { asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL); }
                 nop_delay();
@@ -404,8 +404,8 @@ XSTL,
     // Convenience wrappers for backward compatibility
     pub fn write_top_indicator(&mut self, first_commit: bool, status_var: u32, pre_status_var: u32) {
         self.write_slider(
-            0,      // x_pos: left edge
-            100,    // width
+            0,      // y_pos: top edge
+            100,    // height
             20,     // bar_half_height
             false,  // no left split
             true,   // right split
@@ -417,8 +417,8 @@ XSTL,
 
     pub fn write_bottom_indicator(&mut self, first_commit: bool, status_var: u32, pre_status_var: u32) {
         self.write_slider(
-            WIDTH - 100,  // x_pos: right edge
-            100,          // width
+            HEIGHT - 100,  // y_pos: bottom edge
+            100,          // height
             20,           // bar_half_height
             true,         // left split
             false,        // no right split
@@ -428,13 +428,13 @@ XSTL,
         );
     }
 
-    /// Center slider for title selection (x_pos = WIDTH/2 - width/2, rounded to multiple of 4)
+    /// Center slider for title selection (y_pos = HEIGHT/2 - height/2, rounded to multiple of 4)
     pub fn write_center_indicator(&mut self, first_commit: bool, status_var: u32, pre_status_var: u32) {
-        const SLIDER_WIDTH: usize = 100;
-        const X_POS: usize = (WIDTH / 2 - SLIDER_WIDTH / 2) / 4 * 4; // 672
+        const SLIDER_HEIGHT: usize = 100;
+        const X_POS: usize = (HEIGHT / 2 - SLIDER_HEIGHT / 2) / 4 * 4; // 672
         self.write_slider(
             X_POS,
-            SLIDER_WIDTH,
+            SLIDER_HEIGHT,
             20,           // bar_half_height
             true,         // left split
             true,         // right split (both sides for center)
@@ -455,87 +455,117 @@ const XOE: u32,
 const XSTL: u32,
 > EinkDisplay<MODE1, CKV, SPV, XCL, XLE, XOE, XSTL>
 {
-    /// 文字列スライスを指定位置にフォントで表示（バッファ展開せず、直接画面に pixel 書き込み）
+    /// 文字列スライス(一行)を指定位置にフォントで表示（バッファ展開せず、直接画面に pixel 書き込み）
     /// - str: 表示する文字列
-    /// - x: 文字列の左端位置（ピクセル、4 の倍数）
-    /// - y: 文字列の左端位置（ピクセル、4 の倍数）
-    /// - 画面端を超える文字は無視
+    /// - x: 文字列の左端位置（4ピクセル align)
+    /// - y: 文字列の左端位置（4ピクセル align)
+    /// - 画面端を超える文字は無視 
+    /// - とりあえず画面4x4ピクセルをフォントの1ピクセルとする
     pub fn write_fontbuf_at_pos(
         &mut self,
         str: &str,
         x: usize,
         y: usize,
     ) {
-        const FONT_WIDTH: usize = 4;  // pixels per glyph (1bpp pixel font, 4 pixels = 4 glyph bits)
-        const FONT_HEIGHT: usize = 4; // pixels per glyph height
-
         let display_chars = str.as_bytes();
-        let x_div4 = x / 4;
         let y_div4 = y / 4;
-        let remaining_width = WIDTH / 4;
-        let remaining_height = HEIGHT / 4;
+        let y = y_div4 * 4; // 4 align
+        let x_div4 = x / 4;
+        let x = x_div4 * 4; // 4 align
 
-        let mut current_x = x_div4;
-        let mut current_y = y_div4;
+        let text_len = display_chars.len();
+        let max_chars = (WIDTH - x / 4) / FONT_WIDTH;
+        let text_len = text_len.min(max_chars);
 
-        for &byte in display_chars {
-            let glyph_index = (byte - 0x20) as usize;
+        self.start_frame();
+         // skip w_row after end text, first
+        unsafe { asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL); }
+        for _row in 0..(WIDTH - x - text_len * FONT_WIDTH) {
+            self.xstl.set_low();
+            for _pos in 0..(HEIGHT / 4) {
+                self.xcl.set_high();
+                self.xcl.set_low();
+            }
+            self.xstl.set_high();
+            self.xcl.set_high();
+            self.xcl.set_low();
+
+            self.xle.set_high();
+            self.xle.set_low();
+
+            self.ckv.set_low();
+            nop_delay();
+            self.ckv.set_high();
+        }
+        for texi in (0..text_len).rev() {
+            let glyph_index = (display_chars[texi] - 0x20) as usize;
             let glyph = &FONT_GLYPHS[glyph_index];
+            for row in 0..FONT_WIDTH {
+                self.xstl.set_low();
+                // skip pixels before text height
+                if y_div4 > 0 {
+                    unsafe { asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL); }
+                    for _i in 0..y_div4 {
+                        self.xcl.set_high();
+                        self.xcl.set_low();
+                    }
+                    nop_delay();
+                }
 
-            for bit_row in 0..FONT_HEIGHT {
-                let bit_row_offset = bit_row * FONT_WIDTH / 8;
-                for bit_col in 0..FONT_WIDTH {
-                    let byte_idx = bit_row_offset + bit_col / 8;
-                    let bit_idx = 7 - (bit_col % 8);
-                    let pixel = glyph[byte_idx] & (1 << bit_idx) != 0;
-
-                    if pixel {
-                        // 画面端をチェック
-                        if current_x + bit_col >= remaining_width || current_y + bit_row >= remaining_height {
-                            break;
+                let h_stride = row * FONT_BYTE_HEIGHT;
+                for hb in 0..FONT_BYTE_HEIGHT {
+                    let byte_idx = h_stride + hb;
+                    for iy in 0..8{
+                        let mut b = WHITE_FOUR_PIXEL;
+                        if glyph[byte_idx] & (1 << iy) != 0 {
+                            b = BLACK_FOUR_PIXEL;
                         }
-
-                        // 描画開始位置まで NONE_FOUR_PIXEL でスキップ
-                        if current_x > 0 {
-                            unsafe {
-                                asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL);
-                            }
-                            for _i in 0..current_x {
-                                self.xcl.set_high();
-                                self.xcl.set_low();
-                            }
-                            nop_delay();
-                        }
-
-                        // 描画
                         unsafe {
-                            asm!("wur.gpio_out {0}", in(reg) BLACK_FOUR_PIXEL);
-                        }
-                        for _i in 0..1 {
-                            self.xcl.set_high();
-                            self.xcl.set_low();
-                        }
-                        nop_delay();
-
-                        // 次の行への移動
-                        current_y += 1;
-
-                        // 行移動時のクリア
-                        if current_y > 0 && current_y <= remaining_height {
-                            unsafe {
-                                asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL);
-                            }
-                            for _i in 0..current_x {
-                                self.xcl.set_high();
-                                self.xcl.set_low();
-                            }
-                            nop_delay();
-                        }
+                            asm!("wur.gpio_out {0}", in(reg) b);
+                        };
+                        self.xcl.set_high();
+                        self.xcl.set_low();
                     }
                 }
+                unsafe { asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL); }
+                // skip pixels after text height
+                for _i in 0..((HEIGHT - y - FONT_BYTE_HEIGHT * 8 * 4) / 4) {
+                    self.xcl.set_high();
+                    self.xcl.set_low();
+                }
+                self.xstl.set_high();
+                self.xcl.set_high();
+                self.xcl.set_low();
+
+                self.xle.set_high();
+                self.xle.set_low();
+
+                self.ckv.set_low();
+                nop_delay();
+                self.ckv.set_high();
             }
-            current_x += 1;
         }
+        // skip w_row before start text, end
+        unsafe { asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL); }
+        for _row in 0..x {
+            self.xstl.set_low();
+            for _pos in 0..(HEIGHT / 4) {
+                self.xcl.set_high();
+                self.xcl.set_low();
+            }
+            self.xstl.set_high();
+            self.xcl.set_high();
+            self.xcl.set_low();
+
+            self.xle.set_high();
+            self.xle.set_low();
+
+            self.ckv.set_low();
+            nop_delay();
+            self.ckv.set_high();
+        }
+
+        self.end_frame();
     }
 }
 
