@@ -474,13 +474,13 @@ const XSTL: u32,
         let x = x_div4 * 4; // 4 align
 
         let text_len = display_chars.len();
-        let max_chars = (WIDTH - x / 4) / FONT_WIDTH;
+        let max_chars = (WIDTH - x ) / FONT_WIDTH * 4;
         let text_len = text_len.min(max_chars);
 
         self.start_frame();
          // skip w_row after end text, first
         unsafe { asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL); }
-        for _row in 0..(WIDTH - x - text_len * FONT_WIDTH) {
+        for _row in 0..(WIDTH - x - text_len * FONT_WIDTH * 4) {
             self.xstl.set_low();
             for _pos in 0..(HEIGHT / 4) {
                 self.xcl.set_high();
@@ -501,6 +501,7 @@ const XSTL: u32,
             let glyph_index = (display_chars[texi] - 0x20) as usize;
             let glyph = &FONT_GLYPHS[glyph_index];
             for row in 0..FONT_WIDTH {
+            for _m in 0..4 {
                 self.xstl.set_low();
                 // skip pixels before text height
                 if y_div4 > 0 {
@@ -543,6 +544,7 @@ const XSTL: u32,
                 self.ckv.set_low();
                 nop_delay();
                 self.ckv.set_high();
+            }
             }
         }
         // skip w_row before start text, end

@@ -539,7 +539,7 @@ fn main() -> ! {
     */
 
     let text_data = "hello world";
-    eink_display.write_fontbuf_at_pos(text_data, 500,500);
+    eink_display.write_fontbuf_at_pos(text_data, 200,500);
     led.set_low();
     loop {
         'inner: loop {
