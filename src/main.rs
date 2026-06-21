@@ -20,7 +20,6 @@ use esp_hal::{
     dma_buffers,
     gpio::{Level, Output, OutputConfig, AnyPin, Pin},
     main,
-    //otg_fs::{Usb, UsbBus},
     peripherals::{DEDICATED_GPIO, GPIO, IO_MUX, SYSTEM},
     spi::master::Spi,
     time::Rate,
@@ -28,10 +27,6 @@ use esp_hal::{
 
 esp_bootloader_esp_idf::esp_app_desc!();
 
-/*
-use usb_device::prelude::{UsbDeviceBuilder, UsbVidPid};
-use usbd_serial::{SerialPort, USB_CLASS_CDC};
-*/
 use embedded_storage::{ReadStorage, Storage};
 use esp_storage::FlashStorage;
 
@@ -51,18 +46,6 @@ use touch::{TouchInput, TouchThresholds};
 
 mod page_cache;
 use page_cache::{PageCache, PageId};
-
-/*
-static mut EP_MEMORY: [u32; 1024] = [0; 1024];
-
-struct SerialWrapper<'b, B: usb_device::class_prelude::UsbBus>(SerialPort<'b, B>);
-impl<B: usb_device::class_prelude::UsbBus> core::fmt::Write for SerialWrapper<'_, B> {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        let _ = self.0.write(s.as_bytes());
-        Ok(())
-    }
-}
-*/
 
 struct FakeTimesource {}
 
@@ -177,58 +160,6 @@ fn main() -> ! {
 
     let mut led = Output::new(peripherals.GPIO15, Level::High, OutputConfig::default());
 
-    /*usb serial debug*/
-    /*
-    let usb = Usb::new(peripherals.USB0, peripherals.GPIO20, peripherals.GPIO19);
-    let usb_bus = UsbBus::new(usb, unsafe { &mut *addr_of_mut!(EP_MEMORY) });
-
-    let serial = SerialPort::new(&usb_bus);
-    let mut serial = SerialWrapper(serial);
-
-    let mut usb_dev = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x303A, 0x3001))
-        .device_class(USB_CLASS_CDC)
-        .build();
-
-    /* debug */
-    'outer: loop {
-        if !usb_dev.poll(&mut [&mut serial.0]) {
-            continue;
-        }
-
-        let mut buf = [0u8; 64];
-
-        match serial.0.read(&mut buf) {
-            Ok(count) if count > 0 => {
-                // Echo back in upper case
-                for c in buf[0..count].iter_mut() {
-                    if *c == 0x63 {
-                        // c
-                        break 'outer;
-                    }
-                    if 0x61 <= *c && *c <= 0x7a {
-                        *c &= !0x20;
-                    }
-                }
-
-                let mut write_offset = 0;
-                while write_offset < count {
-                    match serial.0.write(&buf[write_offset..count]) {
-                        Ok(len) => {
-                            if len > 0 {
-                                write_offset += len;
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-
-    writeln!(serial, "\nSuccess serialWrapper test\n").unwrap();
-    */
-
     /* flash rom */
     let mut bytes = [0u8; 4];
     let mut flash = FlashStorage::new(peripherals.FLASH);
@@ -266,15 +197,6 @@ fn main() -> ! {
     let spi_device = ExclusiveDevice::new_no_delay(spi, cs).unwrap();
 
     let sdcard = SdCard::new(spi_device, delay);
-
-    /*
-    loop {
-        if usb_dev.poll(&mut [&mut serial.0]) {
-            break;
-        }
-    }
-    writeln!(serial, "Card size is {} bytes\n", sdcard.num_bytes().unwrap()).unwrap();
-    */
 
     let volume_manager = VolumeManager::new(sdcard, FakeTimesource {});
 
@@ -503,43 +425,36 @@ fn main() -> ! {
     }
     */
 
-    /*
     // benchmark
     write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();
-    match open_2bpp_image(&mut cur_child_dir, next_buf, &file_name) {
+    let t0 = esp_hal::time::Instant::now();
+    let current_page_id = PageId::new(cur_title, cur_chapter, cur_page);
+    let (buf, was_cached) = page_cache.get_or_alloc(current_page_id);
+
+    match  open_2bpp_image(&mut cur_child_dir, buf, &file_name[..]) {
         Ok(_) => {
             let t1 = esp_hal::time::Instant::now();
-            /*
-            eink_display.write_all(WHITE_FOUR_PIXEL);
-            eink_display.write_all(WHITE_FOUR_PIXEL);
-            eink_display.write_all(BLACK_FOUR_PIXEL);
-            */
-            eink_display.write_2bpp_image_rev(pre_buf);
-
-            core::mem::swap(&mut pre_buf, &mut next_buf);
-
-            eink_display.write_2bpp_image(pre_buf);
+            eink_display.write_2bpp_image_rev(page_cache.prev_buffer());
+            eink_display.write_2bpp_image(page_cache.current_buffer());
             let t2 = esp_hal::time::Instant::now();
 
+            let t0_elapsed = t1 - t0;
             let elapsed = t2 - t1;
-            loop {
-                if usb_dev.poll(&mut [&mut serial.0]) {
-                    break;
-                }
-            }
-            writeln!(serial, "benchmark elapsed: {}\n", elapsed).unwrap();
-            loop {
-                if usb_dev.poll(&mut [&mut serial.0]) {
-                    break;
-                }
-            }
-        }
+            let mut output_text1 = String::with_capacity(15);
+            write!(&mut output_text1, "L:{0: >10} ns", t0_elapsed.as_micros()).unwrap();
+            eink_display.write_fontbuf_at_pos(&output_text1[..], 0,100);
+            let mut output_text2 = String::with_capacity(15);
+            write!(&mut output_text2, "D:{0: >10} ns", elapsed.as_micros()).unwrap();
+            eink_display.write_fontbuf_at_pos(&output_text2[..], 0,400);
+
+        },
         Err(_) => {}
     }
+    /*
+    let mut output_text = String::with_capacity(15);
+    write!(&mut output_text, "hello world: {}", cur_page).unwrap();
+    eink_display.write_fontbuf_at_pos(&output_text[..], 0,500);
     */
-
-    let text_data = "hello world";
-    eink_display.write_fontbuf_at_pos(text_data, 200,500);
     led.set_low();
     loop {
         'inner: loop {
@@ -853,7 +768,7 @@ fn main() -> ! {
             // Load from SD card
             file_name.clear();
             write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();
-            if open_2bpp_image(&mut cur_child_dir, buf, &file_name).is_err() {
+            if open_2bpp_image(&mut cur_child_dir, buf, &file_name[..]).is_err() {
                 eink_display.write_all(WHITE_FOUR_PIXEL);
                 eink_display.write_all(BLACK_FOUR_PIXEL);
                 continue;
