@@ -177,9 +177,11 @@ fn main() -> ! {
     let cs = Output::new(peripherals.GPIO34, Level::High, OutputConfig::default());
 
     // DMA buffers - 512 bytes for SD card block size + some margin
+    /*
     let (rx_buffer, rx_descriptors, tx_buffer, tx_descriptors) = dma_buffers!(1024);
     let dma_rx_buf = DmaRxBuf::new(rx_descriptors, rx_buffer).unwrap();
     let dma_tx_buf = DmaTxBuf::new(tx_descriptors, tx_buffer).unwrap();
+    */
 
     let spi = Spi::new(
         peripherals.SPI2,
@@ -190,9 +192,9 @@ fn main() -> ! {
     .unwrap()
     .with_sck(sclk)
     .with_mosi(mosi)
-    .with_miso(miso)
-    .with_dma(peripherals.DMA_SPI2)
-    .with_buffers(dma_rx_buf, dma_tx_buf);
+    .with_miso(miso);
+    //.with_dma(peripherals.DMA_SPI2)
+    //.with_buffers(dma_rx_buf, dma_tx_buf);
 
     let spi_device = ExclusiveDevice::new_no_delay(spi, cs).unwrap();
 
