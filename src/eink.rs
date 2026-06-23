@@ -294,38 +294,38 @@ XSTL,
         &mut self,
         y_pos: usize,
         slider_height: usize,
-        bar_half_height: u32,
-        draw_split_left: bool,
-        draw_split_right: bool,
+        bar_half_width: u32,
+        draw_split_top: bool,
+        draw_split_bottom: bool,
         first_commit: bool,
         status_var: u32,
         pre_status_var: u32,
     ) {
         const SPLIT_HEIGHT: usize = 4; // pixels
-        let x_pos_div4 = y_pos / 4;
+        let y_pos_div4 = y_pos / 4;
         let slider_height_div4 = slider_height / 4;
         let split_height_div4 = SPLIT_HEIGHT / 4;
 
-        let left_split = if draw_split_left { split_height_div4 } else { 0 };
-        let right_split = if draw_split_right { split_height_div4 } else { 0 };
-        let bar_height_div4 = slider_height_div4 - left_split - right_split;
+        let top_split = if draw_split_top { split_height_div4 } else { 0 };
+        let bottom_split = if draw_split_bottom { split_height_div4 } else { 0 };
+        let bar_height_div4 = slider_height_div4 - top_split - bottom_split;
 
         self.start_frame();
         for line in 0..WIDTH {
             self.xstl.set_low();
 
             // skip pixels before slider
-            if x_pos_div4 > 0 {
+            if y_pos_div4 > 0 {
                 unsafe { asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL); }
-                for _i in 0..x_pos_div4 {
+                for _i in 0..y_pos_div4 {
                     self.xcl.set_high();
                     self.xcl.set_low();
                 }
                 nop_delay();
             }
 
-            let in_current = status_var.abs_diff(line as u32) <= bar_half_height;
-            let in_previous = pre_status_var.abs_diff(line as u32) <= bar_half_height;
+            let in_current = status_var.abs_diff(line as u32) <= bar_half_width;
+            let in_previous = pre_status_var.abs_diff(line as u32) <= bar_half_width;
 
             // determine what to draw for slider body
             let pixel = if first_commit {
@@ -341,7 +341,7 @@ XSTL,
             };
 
             // left split bar
-            if draw_split_left {
+            if draw_split_top {
                 if first_commit {
                     unsafe { asm!("wur.gpio_out {0}", in(reg) BLACK_FOUR_PIXEL); }
                 } else {
@@ -363,7 +363,7 @@ XSTL,
             }
 
             // right split bar
-            if draw_split_right {
+            if draw_split_bottom {
                 if first_commit {
                     unsafe { asm!("wur.gpio_out {0}", in(reg) BLACK_FOUR_PIXEL); }
                 } else {
@@ -377,7 +377,7 @@ XSTL,
             }
 
             // skip pixels after slider
-            let remaining = (HEIGHT / 4) - x_pos_div4 - slider_height_div4;
+            let remaining = (HEIGHT / 4) - y_pos_div4 - slider_height_div4;
             if remaining > 0 {
                 unsafe { asm!("wur.gpio_out {0}", in(reg) NONE_FOUR_PIXEL); }
                 nop_delay();

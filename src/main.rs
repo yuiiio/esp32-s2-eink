@@ -39,7 +39,7 @@ use embedded_sdmmc::{
 mod fontdata;
 
 mod eink;
-use eink::{EinkDisplay, TWO_BPP_BUF_SIZE, HEIGHT, BLACK_FOUR_PIXEL, WHITE_FOUR_PIXEL, MyGpio};
+use eink::{EinkDisplay, TWO_BPP_BUF_SIZE, WIDTH, BLACK_FOUR_PIXEL, WHITE_FOUR_PIXEL, MyGpio};
 
 mod touch;
 use touch::{TouchInput, TouchThresholds};
@@ -532,7 +532,7 @@ fn main() -> ! {
             }
             if touch.center {
                 let bottom_indicator_pos_current: u32 =
-                    HEIGHT as u32 - ((cur_page as u32 * HEIGHT as u32) / cur_dir_files_len as u32);
+                    WIDTH as u32 - ((cur_page as u32 * WIDTH as u32) / cur_dir_files_len as u32);
                 eink_display.write_bottom_indicator(true, bottom_indicator_pos_current, 0);
                 let mut bottom_pre_status_var = bottom_indicator_pos_current;
 
@@ -578,8 +578,8 @@ fn main() -> ! {
                         } else {
                             cur_page = cur_page - SKIP_PAGE;
                         }
-                        let bottom_indicator_pos_current: u32 = HEIGHT as u32
-                            - ((cur_page as u32 * HEIGHT as u32) / cur_dir_files_len as u32);
+                        let bottom_indicator_pos_current: u32 = WIDTH as u32
+                            - ((cur_page as u32 * WIDTH as u32) / cur_dir_files_len as u32);
                         eink_display.write_bottom_indicator(
                             indicator_refresh,
                             bottom_indicator_pos_current,
@@ -615,8 +615,8 @@ fn main() -> ! {
                         } else {
                             cur_page = cur_page + SKIP_PAGE;
                         }
-                        let bottom_indicator_pos_current: u32 = HEIGHT as u32
-                            - ((cur_page as u32 * HEIGHT as u32) / cur_dir_files_len as u32);
+                        let bottom_indicator_pos_current: u32 = WIDTH as u32
+                            - ((cur_page as u32 * WIDTH as u32) / cur_dir_files_len as u32);
                         eink_display.write_bottom_indicator(
                             indicator_refresh,
                             bottom_indicator_pos_current,
@@ -630,8 +630,8 @@ fn main() -> ! {
 
                     if touch.top {
                         // Chapter indicator mode - navigate chapters within current title
-                        let top_indicator_pos_current: u32 = HEIGHT as u32
-                            - ((cur_chapter as u32 * HEIGHT as u32) / chapters_count as u32);
+                        let top_indicator_pos_current: u32 = WIDTH as u32
+                            - ((cur_chapter as u32 * WIDTH as u32) / chapters_count as u32);
                         eink_display.write_top_indicator(true, top_indicator_pos_current, 0);
                         let mut top_pre_status_var = top_indicator_pos_current;
 
@@ -651,8 +651,8 @@ fn main() -> ! {
                                 } else {
                                     cur_chapter = cur_chapter - 1;
                                 }
-                                let top_indicator_pos_current: u32 = HEIGHT as u32
-                                    - ((cur_chapter as u32 * HEIGHT as u32)
+                                let top_indicator_pos_current: u32 = WIDTH as u32
+                                    - ((cur_chapter as u32 * WIDTH as u32)
                                         / chapters_count as u32);
                                 eink_display.write_top_indicator(
                                     false,
@@ -667,8 +667,8 @@ fn main() -> ! {
                                 } else {
                                     cur_chapter = cur_chapter + 1;
                                 }
-                                let top_indicator_pos_current: u32 = HEIGHT as u32
-                                    - ((cur_chapter as u32 * HEIGHT as u32)
+                                let top_indicator_pos_current: u32 = WIDTH as u32
+                                    - ((cur_chapter as u32 * WIDTH as u32)
                                         / chapters_count as u32);
                                 eink_display.write_top_indicator(
                                     false,
@@ -689,8 +689,8 @@ fn main() -> ! {
                             }
                             if touch.top {
                                 // Title indicator mode - navigate between titles
-                                let center_indicator_pos_current: u32 = HEIGHT as u32
-                                    - ((cur_title as u32 * HEIGHT as u32) / books_count as u32);
+                                let center_indicator_pos_current: u32 = WIDTH as u32
+                                    - ((cur_title as u32 * WIDTH as u32) / books_count as u32);
                                 eink_display.write_center_indicator(true, center_indicator_pos_current, 0);
                                 let mut center_pre_status_var = center_indicator_pos_current;
 
@@ -710,8 +710,8 @@ fn main() -> ! {
                                         } else {
                                             cur_title = cur_title - 1;
                                         }
-                                        let center_indicator_pos_current: u32 = HEIGHT as u32
-                                            - ((cur_title as u32 * HEIGHT as u32)
+                                        let center_indicator_pos_current: u32 = WIDTH as u32
+                                            - ((cur_title as u32 * WIDTH as u32)
                                                 / books_count as u32);
                                         eink_display.write_center_indicator(
                                             false,
@@ -726,8 +726,8 @@ fn main() -> ! {
                                         } else {
                                             cur_title = cur_title + 1;
                                         }
-                                        let center_indicator_pos_current: u32 = HEIGHT as u32
-                                            - ((cur_title as u32 * HEIGHT as u32)
+                                        let center_indicator_pos_current: u32 = WIDTH as u32
+                                            - ((cur_title as u32 * WIDTH as u32)
                                                 / books_count as u32);
                                         eink_display.write_center_indicator(
                                             false,
