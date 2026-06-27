@@ -72,17 +72,18 @@ pub const WHITE_FOUR_PIXEL: u8 = 0b10101010;
 pub const NONE_FOUR_PIXEL: u8 = 0b00000000;
 
 // waveform for grayscale
-const WAVEFORM: [[u8; 4]; 2] = [ 
+const WAVEFORM: [[u8; 4]; 3] = [ 
     [0b01, 0b10, 0b01, 0b10], 
+    [0b01, 0b10, 0b11, 0b10], 
     [0b01, 0b01, 0b10, 0b10], 
 ];
 
 // put LUT on SRAM
 #[link_section = ".dram0.data"]
-static LUT: [[u8; 256]; 2] = {
-    let mut table = [[0u8; 256]; 2];
+static LUT: [[u8; 256]; 3] = {
+    let mut table = [[0u8; 256]; 3];
     let mut state = 0;
-    while state < 2 {
+    while state < 3 {
         let mut i = 0;
         while i < 256 {
             let src = i as u8;
@@ -189,7 +190,7 @@ XSTL,
     // [1, 1] No action
 
     pub fn write_2bpp_image(&mut self, img_buf: &[u8; TWO_BPP_BUF_SIZE]) {
-        for state in [0, 0, 1, 1] {
+        for state in 0..3 {
             self.start_frame();
             let lut = unsafe {
                 LUT.get_unchecked(state)
