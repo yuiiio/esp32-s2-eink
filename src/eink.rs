@@ -189,7 +189,7 @@ XSTL,
     // [1, 1] No action
 
     pub fn write_2bpp_image(&mut self, img_buf: &[u8; TWO_BPP_BUF_SIZE]) {
-        for state in 0..2 {
+        for state in [0, 0, 1, 1] {
             self.start_frame();
             let lut = unsafe {
                 LUT.get_unchecked(state)
