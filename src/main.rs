@@ -475,16 +475,7 @@ fn main() -> ! {
             if touch.left {
                 if cur_page == 0 {
                     if cur_chapter == 1 {
-                        // Go to previous title's last chapter
-                        if cur_title == 1 {
-                            cur_title = books_count; // circling
-                        } else {
-                            cur_title -= 1;
-                        }
-                        title_dir.close().unwrap();
-                        get_nth_dir_name(&books_dir, cur_title, &mut title_name);
-                        title_dir = books_dir.open_dir(title_name.as_str()).unwrap();
-                        chapters_count = count_subdirs(&title_dir, MAX_CHAPTERS);
+                        // Go to current title's last chapter
                         cur_chapter = chapters_count;
                     } else {
                         cur_chapter -= 1;
@@ -504,16 +495,7 @@ fn main() -> ! {
             if touch.right {
                 if cur_page == (cur_dir_files_len - 1) {
                     if cur_chapter == chapters_count {
-                        // Go to next title's first chapter
-                        if cur_title == books_count {
-                            cur_title = 1; // circling
-                        } else {
-                            cur_title += 1;
-                        }
-                        title_dir.close().unwrap();
-                        get_nth_dir_name(&books_dir, cur_title, &mut title_name);
-                        title_dir = books_dir.open_dir(title_name.as_str()).unwrap();
-                        chapters_count = count_subdirs(&title_dir, MAX_CHAPTERS);
+                        // Go to current title's first chapter
                         cur_chapter = 1;
                     } else {
                         cur_chapter += 1;
@@ -553,16 +535,7 @@ fn main() -> ! {
                         if cur_page < SKIP_PAGE {
                             // open pre chapter dir
                             if cur_chapter == 1 {
-                                // Go to previous title's last chapter
-                                if cur_title == 1 {
-                                    cur_title = books_count; //circling
-                                } else {
-                                    cur_title = cur_title - 1;
-                                }
-                                title_dir.close().unwrap();
-                                get_nth_dir_name(&books_dir, cur_title, &mut title_name);
-                                title_dir = books_dir.open_dir(title_name.as_str()).unwrap();
-                                chapters_count = count_subdirs(&title_dir, MAX_CHAPTERS);
+                                // Go to current title's last chapter
                                 cur_chapter = chapters_count;
                             } else {
                                 cur_chapter = cur_chapter - 1;
@@ -591,16 +564,7 @@ fn main() -> ! {
                         if cur_page > (cur_dir_files_len - 1) - SKIP_PAGE {
                             // open next chapter dir
                             if cur_chapter == chapters_count {
-                                // Go to next title's first chapter
-                                if cur_title == books_count {
-                                    cur_title = 1; //circling
-                                } else {
-                                    cur_title = cur_title + 1;
-                                }
-                                title_dir.close().unwrap();
-                                get_nth_dir_name(&books_dir, cur_title, &mut title_name);
-                                title_dir = books_dir.open_dir(title_name.as_str()).unwrap();
-                                chapters_count = count_subdirs(&title_dir, MAX_CHAPTERS);
+                                // Go to current title's first chapter
                                 cur_chapter = 1;
                             } else {
                                 cur_chapter = cur_chapter + 1;
