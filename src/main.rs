@@ -397,7 +397,7 @@ fn main() -> ! {
         touch_out,
         delay,
         TouchInput::DEFAULT_PULSE_DELAY_NS,
-        TouchThresholds::default_thresholds(),
+        TouchInput::calibrate(&mut adc1, &mut touch_left, &mut touch_right, &mut touch_center, &mut touch_top),
     );
 
     /*

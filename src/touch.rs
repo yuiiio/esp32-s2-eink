@@ -30,7 +30,7 @@ impl TouchThresholds {
     pub const fn default_thresholds() -> Self {
         Self {
             left: 2950,
-            right: 2950,
+            right: 3000,
             center: 2950,
             top: 3100,
         }
@@ -106,5 +106,55 @@ impl<'a> TouchInput<'a> {
 
     pub fn delay(&self) -> Delay {
         self.delay
+    }
+
+    /// Calibrate touch thresholds by sampling each pad multiple times.
+    pub fn calibrate<
+        PIN_L: AdcChannel,
+        PIN_R: AdcChannel,
+        PIN_C: AdcChannel,
+        PIN_T: AdcChannel,
+        CAL: AdcCalScheme<ADC1<'a>>,
+    >(
+        adc: &mut Adc<'a, ADC1<'a>, Blocking>,
+        left: &mut AdcPin<PIN_L, ADC1<'a>, CAL>,
+        right: &mut AdcPin<PIN_R, ADC1<'a>, CAL>,
+        center: &mut AdcPin<PIN_C, ADC1<'a>, CAL>,
+        top: &mut AdcPin<PIN_T, ADC1<'a>, CAL>,
+    ) -> TouchThresholds {
+        const SAMPLES: usize = 16;
+        const THRESHOLD_RATIO: u32 = 105;
+        const THRESHOLD_RATIO_2: u32 = 110;
+
+        let mut sum: u32 = 0;
+        for _ in 0..SAMPLES {
+            sum += adc.read_blocking(left) as u32;
+        }
+        let left_raw = sum / SAMPLES as u32;
+
+        sum = 0;
+        for _ in 0..SAMPLES {
+            sum += adc.read_blocking(right) as u32;
+        }
+        let right_raw = sum / SAMPLES as u32;
+
+        sum = 0;
+        for _ in 0..SAMPLES {
+            sum += adc.read_blocking(center) as u32;
+        }
+        let center_raw = sum / SAMPLES as u32;
+
+        sum = 0;
+        for _ in 0..SAMPLES {
+            sum += adc.read_blocking(top) as u32;
+        }
+        let top_raw = sum / SAMPLES as u32;
+
+        TouchThresholds {
+            left: (left_raw * THRESHOLD_RATIO / 100) as u16,
+            right: (right_raw * THRESHOLD_RATIO / 100) as u16,
+            center: (center_raw * THRESHOLD_RATIO / 100) as u16,
+            top: (top_raw * THRESHOLD_RATIO_2 / 100) as u16,
+        }
     }
 }
