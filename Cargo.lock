@@ -504,7 +504,7 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 [[package]]
 name = "esp-alloc"
 version = "0.10.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#c28239738bea171c7e73d906348175dcd461518d"
+source = "git+https://github.com/esp-rs/esp-hal.git#febbf11b669bf0ddb8354ba9d9fcfd7f23b850db"
 dependencies = [
  "allocator-api2",
  "document-features",
@@ -535,7 +535,7 @@ dependencies = [
 [[package]]
 name = "esp-bootloader-esp-idf"
 version = "0.5.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#c28239738bea171c7e73d906348175dcd461518d"
+source = "git+https://github.com/esp-rs/esp-hal.git#febbf11b669bf0ddb8354ba9d9fcfd7f23b850db"
 dependencies = [
  "document-features",
  "esp-config 0.7.0 (git+https://github.com/esp-rs/esp-hal.git)",
@@ -563,7 +563,7 @@ dependencies = [
 [[package]]
 name = "esp-config"
 version = "0.7.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#c28239738bea171c7e73d906348175dcd461518d"
+source = "git+https://github.com/esp-rs/esp-hal.git#febbf11b669bf0ddb8354ba9d9fcfd7f23b850db"
 dependencies = [
  "document-features",
  "esp-metadata-generated 0.4.0 (git+https://github.com/esp-rs/esp-hal.git)",
@@ -575,7 +575,7 @@ dependencies = [
 [[package]]
 name = "esp-hal"
 version = "1.1.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#c28239738bea171c7e73d906348175dcd461518d"
+source = "git+https://github.com/esp-rs/esp-hal.git#febbf11b669bf0ddb8354ba9d9fcfd7f23b850db"
 dependencies = [
  "bitfield",
  "bitflags 2.13.0",
@@ -632,7 +632,7 @@ dependencies = [
 [[package]]
 name = "esp-hal-procmacros"
 version = "0.22.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#c28239738bea171c7e73d906348175dcd461518d"
+source = "git+https://github.com/esp-rs/esp-hal.git#febbf11b669bf0ddb8354ba9d9fcfd7f23b850db"
 dependencies = [
  "document-features",
  "object",
@@ -652,7 +652,7 @@ checksum = "42c2ee95b945a4780796e4359e72c033aed3b45073880e8029458f538532db8a"
 [[package]]
 name = "esp-metadata-generated"
 version = "0.4.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#c28239738bea171c7e73d906348175dcd461518d"
+source = "git+https://github.com/esp-rs/esp-hal.git#febbf11b669bf0ddb8354ba9d9fcfd7f23b850db"
 
 [[package]]
 name = "esp-println"
@@ -670,7 +670,7 @@ dependencies = [
 [[package]]
 name = "esp-riscv-rt"
 version = "0.14.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#c28239738bea171c7e73d906348175dcd461518d"
+source = "git+https://github.com/esp-rs/esp-hal.git#febbf11b669bf0ddb8354ba9d9fcfd7f23b850db"
 dependencies = [
  "document-features",
  "riscv",
@@ -680,7 +680,7 @@ dependencies = [
 [[package]]
 name = "esp-rom-sys"
 version = "0.1.4"
-source = "git+https://github.com/esp-rs/esp-hal.git#c28239738bea171c7e73d906348175dcd461518d"
+source = "git+https://github.com/esp-rs/esp-hal.git#febbf11b669bf0ddb8354ba9d9fcfd7f23b850db"
 dependencies = [
  "document-features",
  "esp-metadata-generated 0.4.0 (git+https://github.com/esp-rs/esp-hal.git)",
@@ -690,7 +690,7 @@ dependencies = [
 [[package]]
 name = "esp-storage"
 version = "0.9.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#c28239738bea171c7e73d906348175dcd461518d"
+source = "git+https://github.com/esp-rs/esp-hal.git#febbf11b669bf0ddb8354ba9d9fcfd7f23b850db"
 dependencies = [
  "document-features",
  "esp-hal",
@@ -719,7 +719,7 @@ dependencies = [
 [[package]]
 name = "esp-sync"
 version = "0.2.1"
-source = "git+https://github.com/esp-rs/esp-hal.git#c28239738bea171c7e73d906348175dcd461518d"
+source = "git+https://github.com/esp-rs/esp-hal.git#febbf11b669bf0ddb8354ba9d9fcfd7f23b850db"
 dependencies = [
  "document-features",
  "embassy-sync 0.6.2",
@@ -733,7 +733,7 @@ dependencies = [
 [[package]]
 name = "esp32"
 version = "0.40.2"
-source = "git+https://github.com/esp-rs/esp-pacs?rev=4c1aeb8#4c1aeb8b80645a32d52593fcd962779748a33552"
+source = "git+https://github.com/esp-rs/esp-pacs?rev=9765cb8#9765cb8df3868b3cba456abd0ec96f905c3b0515"
 dependencies = [
  "vcell",
 ]
@@ -761,7 +761,7 @@ dependencies = [
 [[package]]
 name = "esp32c2"
 version = "0.29.2"
-source = "git+https://github.com/esp-rs/esp-pacs?rev=4c1aeb8#4c1aeb8b80645a32d52593fcd962779748a33552"
+source = "git+https://github.com/esp-rs/esp-pacs?rev=9765cb8#9765cb8df3868b3cba456abd0ec96f905c3b0515"
 dependencies = [
  "vcell",
 ]
@@ -769,7 +769,7 @@ dependencies = [
 [[package]]
 name = "esp32c3"
 version = "0.32.2"
-source = "git+https://github.com/esp-rs/esp-pacs?rev=4c1aeb8#4c1aeb8b80645a32d52593fcd962779748a33552"
+source = "git+https://github.com/esp-rs/esp-pacs?rev=9765cb8#9765cb8df3868b3cba456abd0ec96f905c3b0515"
 dependencies = [
  "vcell",
 ]
@@ -777,7 +777,7 @@ dependencies = [
 [[package]]
 name = "esp32c5"
 version = "0.2.2"
-source = "git+https://github.com/esp-rs/esp-pacs?rev=4c1aeb8#4c1aeb8b80645a32d52593fcd962779748a33552"
+source = "git+https://github.com/esp-rs/esp-pacs?rev=9765cb8#9765cb8df3868b3cba456abd0ec96f905c3b0515"
 dependencies = [
  "vcell",
 ]
@@ -785,7 +785,7 @@ dependencies = [
 [[package]]
 name = "esp32c6"
 version = "0.23.2"
-source = "git+https://github.com/esp-rs/esp-pacs?rev=4c1aeb8#4c1aeb8b80645a32d52593fcd962779748a33552"
+source = "git+https://github.com/esp-rs/esp-pacs?rev=9765cb8#9765cb8df3868b3cba456abd0ec96f905c3b0515"
 dependencies = [
  "vcell",
 ]
@@ -793,7 +793,7 @@ dependencies = [
 [[package]]
 name = "esp32c61"
 version = "0.3.2"
-source = "git+https://github.com/esp-rs/esp-pacs?rev=4c1aeb8#4c1aeb8b80645a32d52593fcd962779748a33552"
+source = "git+https://github.com/esp-rs/esp-pacs?rev=9765cb8#9765cb8df3868b3cba456abd0ec96f905c3b0515"
 dependencies = [
  "vcell",
 ]
@@ -801,7 +801,7 @@ dependencies = [
 [[package]]
 name = "esp32h2"
 version = "0.19.2"
-source = "git+https://github.com/esp-rs/esp-pacs?rev=4c1aeb8#4c1aeb8b80645a32d52593fcd962779748a33552"
+source = "git+https://github.com/esp-rs/esp-pacs?rev=9765cb8#9765cb8df3868b3cba456abd0ec96f905c3b0515"
 dependencies = [
  "vcell",
 ]
@@ -809,7 +809,7 @@ dependencies = [
 [[package]]
 name = "esp32p4"
 version = "0.2.0"
-source = "git+https://github.com/esp-rs/esp-pacs?rev=4c1aeb8#4c1aeb8b80645a32d52593fcd962779748a33552"
+source = "git+https://github.com/esp-rs/esp-pacs?rev=9765cb8#9765cb8df3868b3cba456abd0ec96f905c3b0515"
 dependencies = [
  "critical-section",
  "vcell",
@@ -818,7 +818,7 @@ dependencies = [
 [[package]]
 name = "esp32s2"
 version = "0.31.2"
-source = "git+https://github.com/esp-rs/esp-pacs?rev=4c1aeb8#4c1aeb8b80645a32d52593fcd962779748a33552"
+source = "git+https://github.com/esp-rs/esp-pacs?rev=9765cb8#9765cb8df3868b3cba456abd0ec96f905c3b0515"
 dependencies = [
  "vcell",
 ]
@@ -826,7 +826,7 @@ dependencies = [
 [[package]]
 name = "esp32s3"
 version = "0.35.2"
-source = "git+https://github.com/esp-rs/esp-pacs?rev=4c1aeb8#4c1aeb8b80645a32d52593fcd962779748a33552"
+source = "git+https://github.com/esp-rs/esp-pacs?rev=9765cb8#9765cb8df3868b3cba456abd0ec96f905c3b0515"
 dependencies = [
  "vcell",
 ]
@@ -978,9 +978,9 @@ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
 name = "jiff"
-version = "0.2.29"
+version = "0.2.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34f877a98676d2fb664698d74cc6a51ce6c484ce8c770f05d0108ec9090aeb46"
+checksum = "ccfe6121cbe750cf81efa362d85c0bde7ea298ec43092d3a193baca59cdbd634"
 dependencies = [
  "defmt",
  "jiff-static",
@@ -992,9 +992,9 @@ dependencies = [
 
 [[package]]
 name = "jiff-static"
-version = "0.2.29"
+version = "0.2.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0666b5ab5ecaca213fc2a85b8c0083d9004e84ee2d5f9a7e0017aaf50986f25f"
+checksum = "e165e897f662d428f3cd3828a919dbe067c2d42bb1031eede74ef9d27ecdedd2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1557,7 +1557,7 @@ dependencies = [
 [[package]]
 name = "xtensa-lx"
 version = "0.13.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#c28239738bea171c7e73d906348175dcd461518d"
+source = "git+https://github.com/esp-rs/esp-hal.git#febbf11b669bf0ddb8354ba9d9fcfd7f23b850db"
 dependencies = [
  "critical-section",
 ]
@@ -1565,7 +1565,7 @@ dependencies = [
 [[package]]
 name = "xtensa-lx-rt"
 version = "0.22.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#c28239738bea171c7e73d906348175dcd461518d"
+source = "git+https://github.com/esp-rs/esp-hal.git#febbf11b669bf0ddb8354ba9d9fcfd7f23b850db"
 dependencies = [
  "document-features",
  "xtensa-lx 0.13.0 (git+https://github.com/esp-rs/esp-hal.git)",
@@ -1575,7 +1575,7 @@ dependencies = [
 [[package]]
 name = "xtensa-lx-rt-proc-macros"
 version = "0.5.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#c28239738bea171c7e73d906348175dcd461518d"
+source = "git+https://github.com/esp-rs/esp-hal.git#febbf11b669bf0ddb8354ba9d9fcfd7f23b850db"
 dependencies = [
  "proc-macro2",
  "quote",
