@@ -18,9 +18,10 @@ use esp_hal::{
     delay::Delay,
     dma::{DmaRxBuf, DmaTxBuf},
     dma_buffers,
-    gpio::{Level, Output, OutputConfig, AnyPin, Pin},
+    gpio::{Level, Output, OutputConfig, AnyPin, Pin,
+        dedicated::{DedicatedGpio, DedicatedGpioOutput}},
     main,
-    peripherals::{DEDICATED_GPIO, GPIO, IO_MUX, SYSTEM},
+    peripherals::{GPIO, IO_MUX, SYSTEM},
     spi::master::Spi,
     time::Rate,
 };
@@ -144,16 +145,7 @@ fn main() -> ! {
         esp_hal::init(esp_hal::Config::default().with_cpu_clock(esp_hal::clock::CpuClock::max()));
     esp_alloc::psram_allocator!(peripherals.PSRAM, esp_hal::psram);
 
-    /* enable dedicated gpio peripheral */
-    SYSTEM::regs()
-        .cpu_peri_clk_en()
-        .modify(|_, w| w.dedicated_gpio_clk_en().bit(true));
-    SYSTEM::regs()
-        .cpu_peri_rst_en()
-        .modify(|_, w| w.dedicated_gpio_rst().bit(true));
-    SYSTEM::regs()
-        .cpu_peri_rst_en()
-        .modify(|_, w| w.dedicated_gpio_rst().bit(false));
+    let channels = DedicatedGpio::new(peripherals.GPIO_DEDICATED);
 
     let delay = Delay::new();
 
@@ -205,62 +197,25 @@ fn main() -> ! {
     // prev_display is managed by index, no separate buffer needed
     let mut page_cache = PageCache::new();
 
+    let dout_pin0 = Output::new(peripherals.GPIO18, Level::Low, OutputConfig::default());
+    let dout_pin1 = Output::new(peripherals.GPIO21, Level::Low, OutputConfig::default());
+    let dout_pin2 = Output::new(peripherals.GPIO16, Level::Low, OutputConfig::default());
+    let dout_pin3 = Output::new(peripherals.GPIO17, Level::Low, OutputConfig::default());
+    let dout_pin4 = Output::new(peripherals.GPIO7, Level::Low, OutputConfig::default());
+    let dout_pin5 = Output::new(peripherals.GPIO9, Level::Low, OutputConfig::default());
+    let dout_pin6 = Output::new(peripherals.GPIO10, Level::Low, OutputConfig::default());
+    let dout_pin7 = Output::new(peripherals.GPIO13, Level::Low, OutputConfig::default());
 
-    /* get the values of dedicated GPIO from the CPU, not peripheral registers */
-    for i in 0..8 {
-        unsafe { &*DEDICATED_GPIO::PTR }
-            .out_cpu()
-            .modify(|_, w| w.sel(i).bit(true));
-    }
+    let dout_0 = DedicatedGpioOutput::new(channels.channel0).with_pin(dout_pin0);
+    let dout_1 = DedicatedGpioOutput::new(channels.channel1).with_pin(dout_pin1);
+    let dout_2 = DedicatedGpioOutput::new(channels.channel2).with_pin(dout_pin2);
+    let dout_3 = DedicatedGpioOutput::new(channels.channel3).with_pin(dout_pin3);
+    let dout_4 = DedicatedGpioOutput::new(channels.channel4).with_pin(dout_pin4);
+    let dout_5 = DedicatedGpioOutput::new(channels.channel5).with_pin(dout_pin5);
+    let dout_6 = DedicatedGpioOutput::new(channels.channel6).with_pin(dout_pin6);
+    let dout_7 = DedicatedGpioOutput::new(channels.channel7).with_pin(dout_pin7);
 
-    // # esp32s2 technical reference page 171
-    // pro_alonegpio_out0: (235)
-    // ..
-    // pro_alonegpio_out7: (242)
-    // GPIO_FUNCx_OUT_SEL_CFG
-    let eink_data_bus_ios: [usize; 8] = [18, 21, 16, 17, 7, 9, 10, 13];
-    let _pin_guard: [AnyPin; 8] = [ // cannot be use a macro?
-        peripherals.GPIO18.degrade(),
-        peripherals.GPIO21.degrade(),
-        peripherals.GPIO16.degrade(),
-        peripherals.GPIO17.degrade(),
-        peripherals.GPIO7.degrade(),
-        peripherals.GPIO9.degrade(),
-        peripherals.GPIO10.degrade(),
-        peripherals.GPIO13.degrade(),
-    ];
-    for i in 0..8 {
-        unsafe { &*GPIO::PTR }
-            .func_out_sel_cfg(eink_data_bus_ios[i])
-            .modify(|_, w| unsafe {
-                w.out_sel()
-                    .bits(235 + (i as u16))
-                    .inv_sel()
-                    .bit(false)
-                    .oen_sel()
-                    .bit(false)
-                    .oen_inv_sel()
-                    .bit(false)
-            });
-    }
-
-    // GPIO_ENABLE_REG(0~31)
-    let mut enable_pins: u32 = 0x00000000;
-    for i in 0..8 {
-        enable_pins |= 1 << (eink_data_bus_ios[i] % 32);
-    }
-
-    unsafe { &*GPIO::PTR }
-        .enable_w1ts()
-        .write(|w| unsafe { w.bits(enable_pins) });
-
-    // IO_MUX_MCU_SEL
-    // hm RegisterBlock in esp32s2 pac doesnot impl gpio(num)
-    for i in 0..8 {
-    unsafe { &*IO_MUX::PTR }
-        .gpio(eink_data_bus_ios[i] % 32)
-        .modify(|_, w| unsafe { w.mcu_sel().bits(1) }); // set to Function 1
-    }
+    let _pin_guard = [ dout_0, dout_1, dout_2, dout_3, dout_4, dout_5, dout_6, dout_7 ];
 
     let _mode1 = Output::new(peripherals.GPIO11, Level::High, OutputConfig::default());
     let mode1 = MyGpio::<11>;
@@ -399,32 +354,6 @@ fn main() -> ! {
         TouchInput::DEFAULT_PULSE_DELAY_NS,
         TouchInput::calibrate(&mut adc1, &mut touch_left, &mut touch_right, &mut touch_center, &mut touch_top),
     );
-
-    /*
-    const RECORD_LEN: usize = 20;
-    let mut pulse_record: [u16; RECORD_LEN] = [0; RECORD_LEN];
-    // ADC_ATTEN_DB_11: 0~2500mv
-    // 12bit adc(but seems max 8192(1<<13) ?)
-    loop {
-        touch_out.set_high();
-        delay.delay_nanos(TOUCH_PULSE_HIGH_DELAY_NS);
-        touch_out.set_low();
-        //delay.delay_nanos(1);
-        // timer
-        for i in 0..RECORD_LEN {
-            pulse_record[i] = adc1.read_blocking(&mut touch_top);
-            //delay.delay_nanos(1);
-        }
-        // timer / RECORD_LEN = freq
-        usb_dev.poll(&mut [&mut serial.0]);
-        for i in 0..RECORD_LEN {
-            serial
-                .0
-                .write(&[(pulse_record[i] >> 8) as u8, (pulse_record[i] & 0xff) as u8])
-                .ok();
-        }
-    }
-    */
 
     // benchmark
     write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();

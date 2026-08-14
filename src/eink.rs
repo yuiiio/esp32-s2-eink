@@ -4,7 +4,9 @@ use core::arch::asm;
 
 use esp_backtrace as _;
 use esp_hal::{
-    gpio::AnyPin,
+    gpio::{
+        dedicated::{DedicatedGpioOutput}
+    },
 };
 
 use crate::fontdata::{FONT_GLYPHS, FONT_WIDTH, FONT_BYTE_HEIGHT};
@@ -148,7 +150,7 @@ const XSTL: u32,
     pub xle: MyGpio<XLE>,
     pub xoe: MyGpio<XOE>,
     pub xstl: MyGpio<XSTL>,
-    pub _pin_guard: [AnyPin<'static>; 8],
+    pub _pin_guard: [DedicatedGpioOutput<'static>; 8],
 }
 
 impl<
