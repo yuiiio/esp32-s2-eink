@@ -365,6 +365,7 @@ fn main() -> ! {
         Ok(_) => {
             let t1 = esp_hal::time::Instant::now();
             eink_display.write_2bpp_image_rev(page_cache.prev_buffer());
+            eink_display.write_all(BLACK_FOUR_PIXEL);
             eink_display.write_2bpp_image(page_cache.current_buffer());
             let t2 = esp_hal::time::Instant::now();
 
@@ -671,6 +672,7 @@ fn main() -> ! {
 
         // Display: reverse previous, then show current
         eink_display.write_2bpp_image_rev(page_cache.prev_buffer());
+        eink_display.write_all(BLACK_FOUR_PIXEL);
         eink_display.write_2bpp_image(page_cache.current_buffer());
 
         // Mark current as displayed (index swap, no memory copy)

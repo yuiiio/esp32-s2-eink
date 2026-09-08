@@ -106,7 +106,7 @@ static LUT: [[u8; 256]; 3] = {
 
 const REVERSE_WAVEFORM: [[u8; 4]; 2] = [ 
     [0b10, 0b10, 0b01, 0b01], 
-    [0b10, 0b10, 0b01, 0b01], 
+    [0b01, 0b01, 0b01, 0b01], //unused now
 ];
 
 // put LUT on SRAM
