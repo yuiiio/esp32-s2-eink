@@ -81,7 +81,7 @@ const WAVEFORM: [[u8; 4]; 3] = [
 ];
 
 // put LUT on SRAM
-#[link_section = ".dram0.data"]
+#[link_section = ".data"]
 static LUT: [[u8; 256]; 3] = {
     let mut table = [[0u8; 256]; 3];
     let mut state = 0;
@@ -110,7 +110,7 @@ const REVERSE_WAVEFORM: [[u8; 4]; 2] = [
 ];
 
 // put LUT on SRAM
-#[link_section = ".dram0.data"]
+#[link_section = ".data"]
 static REVERSE_LUT: [[u8; 256]; 2] = {
     let mut table = [[0u8; 256]; 2];
     let mut state = 0;
