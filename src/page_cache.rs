@@ -24,16 +24,25 @@ impl PageId {
     }
 }
 
+#[repr(align(32))]
+pub struct PageBuf(pub [u8; TWO_BPP_BUF_SIZE]);
+
+// SPI DMA が PSRAM のバッファへ直接転送できる条件:
+// 先頭が 32byte (DCache line) 境界で、かつ長さも 32byte の倍数
+// (末尾が 16byte 境界でないと esp-hal が中間バッファ経由のコピーに落とす)。
+const _: () = assert!(core::mem::align_of::<PageBuf>() == 32);
+const _: () = assert!(core::mem::size_of::<PageBuf>() % 32 == 0);
+
 /// Cache entry
 struct CacheEntry {
-    buffer: Box<[u8; TWO_BPP_BUF_SIZE]>,
+    buffer: Box<PageBuf>,
     page_id: Option<PageId>,
 }
 
 impl CacheEntry {
     fn new() -> Self {
         Self {
-            buffer: Box::new([0u8; TWO_BPP_BUF_SIZE]),
+            buffer: unsafe { Box::<PageBuf>::new_uninit().assume_init() },
             page_id: None,
         }
     }
@@ -50,8 +59,14 @@ pub struct PageCache {
 
 impl PageCache {
     pub fn new() -> Self {
+        let mut entries: [CacheEntry; CACHE_SIZE] =
+            core::array::from_fn(|_| CacheEntry::new());
+        // 起動後 1 回目の表示では prev_idx (= 0) のバッファが reverse 波形で
+        // そのまま送られるので、このスロットだけは 0 (= No action) にしておく。
+        // 残りは SD から全面上書きされるので未初期化のままで良い。
+        entries[0].buffer.0.fill(0);
         Self {
-            entries: core::array::from_fn(|_| CacheEntry::new()),
+            entries,
             current_idx: 0,
             prev_idx: 0,
         }
@@ -63,7 +78,7 @@ impl PageCache {
         self.entries
             .iter()
             .find(|e| e.page_id == Some(page_id))
-            .map(|e| e.buffer.as_ref())
+            .map(|e| &e.buffer.0)
     }
 
     /// Check if page is cached
@@ -73,12 +88,12 @@ impl PageCache {
 
     /// Get the current display buffer
     pub fn current_buffer(&self) -> &[u8; TWO_BPP_BUF_SIZE] {
-        &self.entries[self.current_idx].buffer
+        &self.entries[self.current_idx].buffer.0
     }
 
     /// Get the previous buffer (for reverse display)
     pub fn prev_buffer(&self) -> &[u8; TWO_BPP_BUF_SIZE] {
-        &self.entries[self.prev_idx].buffer
+        &self.entries[self.prev_idx].buffer.0
     }
 
     /// Mark current page as displayed (moves current to prev)
@@ -93,14 +108,14 @@ impl PageCache {
         // Check if already cached
         if let Some(idx) = self.entries.iter().position(|e| e.page_id == Some(page_id)) {
             self.current_idx = idx;
-            return (&mut self.entries[idx].buffer, true);
+            return (&mut self.entries[idx].buffer.0, true);
         }
 
         // Find an empty slot or LRU slot (furthest from current)
         let alloc_idx = self.find_alloc_slot(page_id);
         self.entries[alloc_idx].page_id = Some(page_id);
         self.current_idx = alloc_idx;
-        (&mut self.entries[alloc_idx].buffer, false)
+        (&mut self.entries[alloc_idx].buffer.0, false)
     }
 
     /// Find best slot to allocate for a new page
@@ -145,7 +160,7 @@ impl PageCache {
         // Find slot for prefetch (don't evict current)
         let alloc_idx = self.find_prefetch_slot(page_id);
         self.entries[alloc_idx].page_id = Some(page_id);
-        Some(&mut self.entries[alloc_idx].buffer)
+        Some(&mut self.entries[alloc_idx].buffer.0)
     }
 
     /// Find slot for prefetch (avoid current buffer)
