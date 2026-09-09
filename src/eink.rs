@@ -191,6 +191,7 @@ XSTL,
     // [1, 0] Draw white
     // [1, 1] No action
 
+    #[esp_hal::ram]
     pub fn write_2bpp_image(&mut self, img_buf: &[u8; TWO_BPP_BUF_SIZE]) {
         for state in 0..3 {
             self.start_frame();
@@ -226,6 +227,7 @@ XSTL,
         }
     }
 
+    #[esp_hal::ram]
     pub fn write_2bpp_image_rev(&mut self, img_buf: &[u8; TWO_BPP_BUF_SIZE]) {
         for state in 0..1 {
             self.start_frame();
@@ -261,6 +263,7 @@ XSTL,
         }
     }
 
+    #[esp_hal::ram]
     pub fn write_all(&mut self, solid_pixel: u8) {
         unsafe {
             asm!("wur.gpio_out {0}", in(reg) solid_pixel);
