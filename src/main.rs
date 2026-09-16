@@ -186,6 +186,112 @@ fn count_entries<
     count
 }
 
+/// Transport-only timing probe, run once at boot before the SD card takes the
+/// bus. Nothing is routed to pins: a transaction's duration is fixed by the
+/// clock divider and the bit count, so an unrouted peripheral takes exactly as
+/// long as a routed one and nothing on the board sees the clocks. That removes
+/// the card and the filesystem from the measurement, leaving the transport and
+/// the destination memory.
+///
+/// All four runs move the same 128 KiB in 512-byte `transfer` calls, which is
+/// the exact shape and size `read_data` issues for an SD block. 128 KiB is 16x
+/// this chip's 8 KB data cache, so the PSRAM runs touch cold lines throughout -
+/// an 8 KiB buffer fits in the cache entirely and measures nothing but cache
+/// hits, which is what made the previous version of this bench useless.
+const BENCH_BLOCK: usize = 512;
+const BENCH_TOTAL: usize = 128 * 1024;
+/// Internal RAM is not cached on this chip, so repeating a small buffer moves
+/// the same total without needing 128 KiB of SRAM we do not have.
+const BENCH_SRAM_LEN: usize = 8 * 1024;
+const BENCH_SRAM_PASSES: usize = BENCH_TOTAL / BENCH_SRAM_LEN;
+
+static mut BENCH_RX: [u8; BENCH_SRAM_LEN] = [0u8; BENCH_SRAM_LEN];
+static mut BENCH_TX: [u8; BENCH_BLOCK] = [0u8; BENCH_BLOCK];
+
+struct SpiBench {
+    /// FIFO path, destination in internal RAM. Uncached, so this is the clean
+    /// cost of esp-hal's 72-byte FIFO chunking.
+    fifo_sram_us: u32,
+    /// FIFO path, destination in PSRAM. `read_from_fifo` stores through the
+    /// CPU cache, so every cold 32-byte line is read from PSRAM before being
+    /// overwritten and written back later. The gap to `fifo_sram_us` is that.
+    fifo_psram_us: u32,
+    /// DMA path, destination in internal RAM.
+    dma_sram_us: u32,
+    /// DMA path, destination in PSRAM. DMA writes through EXTMEM instead of the
+    /// cache, so if write-allocate is what is costing us, this should land near
+    /// `dma_sram_us` rather than near `fifo_psram_us`.
+    dma_psram_us: u32,
+    /// Address of the PSRAM buffer: expect 0x3f5----- and 16-byte aligned,
+    /// without which the DMA driver silently stages through a copy buffer.
+    psram_addr: u32,
+}
+
+#[esp_hal::ram]
+fn bench_run<B: SpiBus>(bus: &mut B, rx: &mut [u8], tx: &[u8], passes: usize) -> u32
+where
+    B::Error: core::fmt::Debug,
+{
+    let t = esp_hal::time::Instant::now();
+    for _ in 0..passes {
+        for chunk in rx.chunks_mut(BENCH_BLOCK) {
+            SpiBus::transfer(bus, chunk, tx).unwrap();
+        }
+    }
+    (esp_hal::time::Instant::now() - t).as_micros() as u32
+}
+
+#[esp_hal::ram]
+fn bench_spi(
+    spi2: esp_hal::peripherals::SPI2<'static>,
+    dma: esp_hal::peripherals::DMA_SPI2<'static>,
+    config: esp_hal::spi::master::Config,
+) -> SpiBench {
+    let rx_sram: &mut [u8] = unsafe { &mut *core::ptr::addr_of_mut!(BENCH_RX) };
+    let tx: &mut [u8] = unsafe { &mut *core::ptr::addr_of_mut!(BENCH_TX) };
+    tx.fill(0xFF); // what the SD driver actually clocks out; timing is unaffected
+
+    // 16-byte alignment is what keeps the DMA driver on its zero-copy path for
+    // a PSRAM destination on this chip. With a 16-aligned base every 512-byte
+    // chunk also *ends* 16-aligned, which is the condition it actually checks.
+    let layout = core::alloc::Layout::from_size_align(BENCH_TOTAL, 16).unwrap();
+    let psram_ptr = unsafe { alloc::alloc::alloc(layout) };
+    let psram_addr = psram_ptr as u32;
+
+    let mut fifo_sram_us = 0;
+    let mut fifo_psram_us = 0;
+    let mut dma_sram_us = 0;
+    let mut dma_psram_us = 0;
+
+    if !psram_ptr.is_null() {
+        let rx_psram: &mut [u8] =
+            unsafe { core::slice::from_raw_parts_mut(psram_ptr, BENCH_TOTAL) };
+
+        let mut spi = Spi::new(unsafe { spi2.clone_unchecked() }, config).unwrap();
+        fifo_sram_us = bench_run(&mut spi, rx_sram, tx, BENCH_SRAM_PASSES);
+        fifo_psram_us = bench_run(&mut spi, rx_psram, tx, 1);
+        drop(spi);
+
+        // No `with_buffers`: those only back the driver's `Copied` fallback.
+        // Both destinations should take the zero-copy path, which is what we
+        // want to measure - if one does not, its number will say so loudly.
+        let mut spi_dma = Spi::new(spi2, config).unwrap().with_dma(dma);
+        dma_sram_us = bench_run(&mut spi_dma, rx_sram, tx, BENCH_SRAM_PASSES);
+        dma_psram_us = bench_run(&mut spi_dma, rx_psram, tx, 1);
+        drop(spi_dma);
+
+        unsafe { alloc::alloc::dealloc(psram_ptr, layout) };
+    }
+
+    SpiBench {
+        fifo_sram_us,
+        fifo_psram_us,
+        dma_sram_us,
+        dma_psram_us,
+        psram_addr,
+    }
+}
+
 #[esp_hal::ram]
 fn open_2bpp_image<
     D: embedded_sdmmc::BlockDevice,
@@ -243,12 +349,17 @@ fn main() -> ! {
     let dma_tx_buf = DmaTxBuf::new(tx_descriptors, tx_buffer).unwrap();
     */
 
-    let spi = Spi::new(
-        peripherals.SPI2,
-        esp_hal::spi::master::Config::default()
-            .with_frequency(Rate::from_mhz(80))
-            .with_mode(esp_hal::spi::Mode::_0),
-    )
+    let spi_config = esp_hal::spi::master::Config::default()
+        .with_frequency(Rate::from_mhz(80))
+        .with_mode(esp_hal::spi::Mode::_0);
+
+    let spi_bench = bench_spi(
+        unsafe { peripherals.SPI2.clone_unchecked() },
+        unsafe { peripherals.DMA_SPI2.clone_unchecked() },
+        spi_config,
+    );
+
+    let spi = Spi::new(peripherals.SPI2, spi_config)
     .unwrap()
     .with_sck(sclk)
     .with_mosi(mosi)
@@ -450,6 +561,29 @@ fn main() -> ! {
         },
         Err(_) => {}
     }
+
+    // Transport-only numbers from boot. Every line moves 128 KiB in 512-byte
+    // `transfer` calls, so at the 80 MHz SCLK the floor for all four is
+    // 13107 us.
+    //   FS/FP: FIFO path, destination in SRAM / PSRAM
+    //   DS/DP: DMA path,  destination in SRAM / PSRAM
+    //   P@   : PSRAM buffer address - expect 0x3f5..... and 16-byte aligned
+    let mut bench_text = String::with_capacity(16);
+    write!(&mut bench_text, "FS:{0: >10} us", spi_bench.fifo_sram_us).unwrap();
+    eink_display.write_fontbuf_at_pos(&bench_text[..], 0, 550);
+    bench_text.clear();
+    write!(&mut bench_text, "FP:{0: >10} us", spi_bench.fifo_psram_us).unwrap();
+    eink_display.write_fontbuf_at_pos(&bench_text[..], 0, 650);
+    bench_text.clear();
+    write!(&mut bench_text, "DS:{0: >10} us", spi_bench.dma_sram_us).unwrap();
+    eink_display.write_fontbuf_at_pos(&bench_text[..], 0, 750);
+    bench_text.clear();
+    write!(&mut bench_text, "DP:{0: >10} us", spi_bench.dma_psram_us).unwrap();
+    eink_display.write_fontbuf_at_pos(&bench_text[..], 0, 850);
+    bench_text.clear();
+    write!(&mut bench_text, "P@:{0: >10x}", spi_bench.psram_addr).unwrap();
+    eink_display.write_fontbuf_at_pos(&bench_text[..], 0, 950);
+
     /*
     let mut output_text = String::with_capacity(15);
     write!(&mut output_text, "hello world: {}", cur_page).unwrap();
