@@ -250,14 +250,14 @@ fn main() -> ! {
         peripherals.SPI2,
         esp_hal::spi::master::Config::default()
             .with_frequency(Rate::from_mhz(80))
-            .with_mode(esp_hal::spi::Mode::_0),
-            //.with_min_async_transfer_size(128),
+            .with_mode(esp_hal::spi::Mode::_0)
+            .with_min_async_transfer_size(128),
     )
     .unwrap()
     .with_sck(sclk)
     .with_mosi(mosi)
-    .with_miso(miso);
-    //.with_dma(peripherals.DMA_SPI2);
+    .with_miso(miso)
+    .with_dma(peripherals.DMA_SPI2);
 
     let spi_device = RamSpiDevice { bus: spi, cs };
 
