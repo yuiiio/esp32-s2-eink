@@ -31,7 +31,7 @@ esp_bootloader_esp_idf::esp_app_desc!();
 use embedded_storage::{ReadStorage, Storage};
 use esp_storage::FlashStorage;
 
-use embedded_hal_bus::spi::ExclusiveDevice;
+use embedded_hal::spi::{ErrorType, Operation, SpiBus, SpiDevice};
 use embedded_sdmmc::{
     SdCard, BlockDevice, Directory, Error, Mode, SdCardError, ShortFileName, VolumeIdx,
     VolumeManager,
@@ -47,6 +47,74 @@ use touch::{TouchInput, TouchThresholds};
 
 mod page_cache;
 use page_cache::{PageCache, PageId};
+
+/// `embedded-hal-bus`'s `ExclusiveDevice::transaction` compiles to ~1.2 KB of
+/// flash-resident code that runs for *every* SPI byte, including the single
+/// byte polls in the SD protocol. Fetching it over SPI0 fights with the PSRAM
+/// traffic of the very transfer it is driving, so keep our own copy in IRAM and
+/// skip the `Operation` slice dispatch while we are at it.
+struct RamSpiDevice<'a> {
+    bus: Spi<'a, esp_hal::Blocking>,
+    cs: Output<'a>,
+}
+
+impl ErrorType for RamSpiDevice<'_> {
+    type Error = esp_hal::spi::Error;
+}
+
+impl SpiDevice<u8> for RamSpiDevice<'_> {
+    #[esp_hal::ram]
+    fn transaction(&mut self, operations: &mut [Operation<'_, u8>]) -> Result<(), Self::Error> {
+        self.cs.set_low();
+        let mut res = Ok(());
+        for op in operations.iter_mut() {
+            res = match op {
+                Operation::Read(buf) => SpiBus::read(&mut self.bus, buf),
+                Operation::Write(buf) => SpiBus::write(&mut self.bus, buf),
+                Operation::Transfer(read, write) => SpiBus::transfer(&mut self.bus, read, write),
+                Operation::TransferInPlace(buf) => SpiBus::transfer_in_place(&mut self.bus, buf),
+                Operation::DelayNs(_) => Ok(()),
+            };
+            if res.is_err() {
+                break;
+            }
+        }
+        self.cs.set_high();
+        res
+    }
+
+    #[esp_hal::ram]
+    fn read(&mut self, buf: &mut [u8]) -> Result<(), Self::Error> {
+        self.cs.set_low();
+        let res = SpiBus::read(&mut self.bus, buf);
+        self.cs.set_high();
+        res
+    }
+
+    #[esp_hal::ram]
+    fn write(&mut self, buf: &[u8]) -> Result<(), Self::Error> {
+        self.cs.set_low();
+        let res = SpiBus::write(&mut self.bus, buf);
+        self.cs.set_high();
+        res
+    }
+
+    #[esp_hal::ram]
+    fn transfer(&mut self, read: &mut [u8], write: &[u8]) -> Result<(), Self::Error> {
+        self.cs.set_low();
+        let res = SpiBus::transfer(&mut self.bus, read, write);
+        self.cs.set_high();
+        res
+    }
+
+    #[esp_hal::ram]
+    fn transfer_in_place(&mut self, buf: &mut [u8]) -> Result<(), Self::Error> {
+        self.cs.set_low();
+        let res = SpiBus::transfer_in_place(&mut self.bus, buf);
+        self.cs.set_high();
+        res
+    }
+}
 
 struct FakeTimesource {}
 
@@ -118,6 +186,7 @@ fn count_entries<
     count
 }
 
+#[esp_hal::ram]
 fn open_2bpp_image<
     D: embedded_sdmmc::BlockDevice,
     T: embedded_sdmmc::TimeSource,
@@ -187,7 +256,7 @@ fn main() -> ! {
     //.with_dma(peripherals.DMA_SPI2)
     //.with_buffers(dma_rx_buf, dma_tx_buf);
 
-    let spi_device = ExclusiveDevice::new_no_delay(spi, cs).unwrap();
+    let spi_device = RamSpiDevice { bus: spi, cs };
 
     let sdcard = SdCard::new(spi_device, delay);
 
