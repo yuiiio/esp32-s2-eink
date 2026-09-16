@@ -441,10 +441,10 @@ fn main() -> ! {
             let t0_elapsed = t1 - t0;
             let elapsed = t2 - t1;
             let mut output_text1 = String::with_capacity(15);
-            write!(&mut output_text1, "L:{0: >10} ns", t0_elapsed.as_micros()).unwrap();
+            write!(&mut output_text1, "L:{0: >10} us", t0_elapsed.as_micros()).unwrap();
             eink_display.write_fontbuf_at_pos(&output_text1[..], 0,100);
             let mut output_text2 = String::with_capacity(15);
-            write!(&mut output_text2, "D:{0: >10} ns", elapsed.as_micros()).unwrap();
+            write!(&mut output_text2, "D:{0: >10} us", elapsed.as_micros()).unwrap();
             eink_display.write_fontbuf_at_pos(&output_text2[..], 0,400);
 
         },
