@@ -4,6 +4,7 @@ runner = "espflash flash --before no-reset --no-stub"
 
 [env]
 ESP_LOG="INFO"
+ESP_HAL_CONFIG_PLACE_SPI_MASTER_DRIVER_IN_RAM = "true"
 
 [build]
 rustflags = [
