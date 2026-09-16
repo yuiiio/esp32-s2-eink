@@ -480,7 +480,11 @@ const XSTL: u32,
         let x = x_div4 * 4; // 4 align
 
         let text_len = display_chars.len();
-        let max_chars = (WIDTH - x ) / FONT_WIDTH * 4;
+        // Each glyph occupies FONT_WIDTH * 4 rows, so that product is the
+        // divisor. Dividing by FONT_WIDTH and then multiplying by 4 claimed room
+        // for 268 characters instead of 16, and the row count below then
+        // underflowed into a ~4-billion iteration loop on any string past 16.
+        let max_chars = (WIDTH - x) / (FONT_WIDTH * 4);
         let text_len = text_len.min(max_chars);
 
         self.start_frame();
