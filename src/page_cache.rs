@@ -24,14 +24,29 @@ impl PageId {
     }
 }
 
+/// TIFF annotation header at the head of every page file.
+///
+/// The buffer holds it rather than seeking past it, so that the file maps onto
+/// the buffer at offset 0. Seeking to 8 made `read_multi` treat the first
+/// sector as a partial block and hand out every later destination at
+/// `base + 504`, which is 8 mod 16 - and a PSRAM destination whose *end* is not
+/// 16-byte aligned drops the SPI DMA driver onto its copy-through-a-bounce-
+/// buffer path on this chip. Starting at 0 keeps every 512-byte block at a
+/// multiple of 512 from a 32-byte aligned base.
+pub const TIF_HEADER_LEN: usize = 8;
+
+/// Full on-card page: header followed by the 2bpp image.
+pub const PAGE_RAW_SIZE: usize = TIF_HEADER_LEN + TWO_BPP_BUF_SIZE;
+
 #[repr(align(32))]
-pub struct PageBuf(pub [u8; TWO_BPP_BUF_SIZE]);
+pub struct PageBuf(pub [u8; PAGE_RAW_SIZE]);
 
 // SPI DMA が PSRAM のバッファへ直接転送できる条件:
-// 先頭が 32byte (DCache line) 境界で、かつ長さも 32byte の倍数
-// (末尾が 16byte 境界でないと esp-hal が中間バッファ経由のコピーに落とす)。
+// 先頭が 32byte (DCache line) 境界で、各 512byte ブロックの末尾が 16byte 境界
+// (でないと esp-hal が中間バッファ経由のコピーに落とす)。
+// base が 32byte 境界で転送先が base + 512*k なら両方満たす。
 const _: () = assert!(core::mem::align_of::<PageBuf>() == 32);
-const _: () = assert!(core::mem::size_of::<PageBuf>() % 32 == 0);
+const _: () = assert!(TIF_HEADER_LEN.is_multiple_of(8));
 
 /// Cache entry
 struct CacheEntry {
@@ -78,7 +93,7 @@ impl PageCache {
         self.entries
             .iter()
             .find(|e| e.page_id == Some(page_id))
-            .map(|e| &e.buffer.0)
+            .map(|e| image_of(&e.buffer))
     }
 
     /// Check if page is cached
@@ -88,12 +103,12 @@ impl PageCache {
 
     /// Get the current display buffer
     pub fn current_buffer(&self) -> &[u8; TWO_BPP_BUF_SIZE] {
-        &self.entries[self.current_idx].buffer.0
+        image_of(&self.entries[self.current_idx].buffer)
     }
 
     /// Get the previous buffer (for reverse display)
     pub fn prev_buffer(&self) -> &[u8; TWO_BPP_BUF_SIZE] {
-        &self.entries[self.prev_idx].buffer.0
+        image_of(&self.entries[self.prev_idx].buffer)
     }
 
     /// Mark current page as displayed (moves current to prev)
@@ -104,7 +119,7 @@ impl PageCache {
 
     /// Find or allocate a buffer for loading a page
     /// Returns (buffer_mut, was_cached)
-    pub fn get_or_alloc(&mut self, page_id: PageId) -> (&mut [u8; TWO_BPP_BUF_SIZE], bool) {
+    pub fn get_or_alloc(&mut self, page_id: PageId) -> (&mut [u8; PAGE_RAW_SIZE], bool) {
         // Check if already cached
         if let Some(idx) = self.entries.iter().position(|e| e.page_id == Some(page_id)) {
             self.current_idx = idx;
@@ -151,7 +166,7 @@ impl PageCache {
     /// Prefetch a page into cache without setting it as current
     /// Returns buffer to fill if not already cached
     #[allow(unused)]
-    pub fn prefetch_slot(&mut self, page_id: PageId) -> Option<&mut [u8; TWO_BPP_BUF_SIZE]> {
+    pub fn prefetch_slot(&mut self, page_id: PageId) -> Option<&mut [u8; PAGE_RAW_SIZE]> {
         // Already cached?
         if self.contains(page_id) {
             return None;
@@ -224,6 +239,12 @@ impl PageCache {
             }
         }
     }
+}
+
+/// The image portion of a loaded page, i.e. everything after the header.
+fn image_of(buf: &PageBuf) -> &[u8; TWO_BPP_BUF_SIZE] {
+    // Both bounds are compile-time constants, so this cannot fail.
+    buf.0[TIF_HEADER_LEN..].try_into().unwrap()
 }
 
 /// Calculate "distance" between two pages for eviction policy

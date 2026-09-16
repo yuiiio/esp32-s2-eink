@@ -46,23 +46,23 @@ mod touch;
 use touch::{TouchInput, TouchThresholds};
 
 mod page_cache;
-use page_cache::{PageCache, PageId};
+use page_cache::{PAGE_RAW_SIZE, PageCache, PageId};
 
 /// `embedded-hal-bus`'s `ExclusiveDevice::transaction` compiles to ~1.2 KB of
 /// flash-resident code that runs for *every* SPI byte, including the single
 /// byte polls in the SD protocol. Fetching it over SPI0 fights with the PSRAM
 /// traffic of the very transfer it is driving, so keep our own copy in IRAM and
 /// skip the `Operation` slice dispatch while we are at it.
-struct RamSpiDevice<'a> {
-    bus: Spi<'a, esp_hal::Blocking>,
+struct RamSpiDevice<'a, B> {
+    bus: B,
     cs: Output<'a>,
 }
 
-impl ErrorType for RamSpiDevice<'_> {
-    type Error = esp_hal::spi::Error;
+impl<B: SpiBus> ErrorType for RamSpiDevice<'_, B> {
+    type Error = B::Error;
 }
 
-impl SpiDevice<u8> for RamSpiDevice<'_> {
+impl<B: SpiBus> SpiDevice<u8> for RamSpiDevice<'_, B> {
     #[esp_hal::ram]
     fn transaction(&mut self, operations: &mut [Operation<'_, u8>]) -> Result<(), Self::Error> {
         self.cs.set_low();
@@ -195,7 +195,7 @@ fn open_2bpp_image<
     const MAX_VOLUMES: usize,
 >(
     cur_dir: &mut Directory<D, T, MAX_DIRS, MAX_FILES, MAX_VOLUMES>,
-    img_buf: &mut [u8; TWO_BPP_BUF_SIZE],
+    img_buf: &mut [u8; PAGE_RAW_SIZE],
     file_name: &str,
 ) -> Result<(), Error<SdCardError>>
 where
@@ -203,7 +203,11 @@ where
 {
     let file = cur_dir.open_file_in_dir(file_name, Mode::ReadOnly)?;
 
-    file.seek_from_start(8)?; // first 8 bytes is annotation header
+    // Read from offset 0, annotation header included. Seeking past the header
+    // instead would leave every destination slice at `base + 504`, whose end is
+    // not 16-byte aligned, and that costs us the DMA driver's zero-copy path.
+    // The header lands in the first 8 bytes of the buffer; the display side
+    // skips it.
     file.read_multi(img_buf)?;
     Ok(())
 }
@@ -236,25 +240,24 @@ fn main() -> ! {
     let mosi = peripherals.GPIO35;
     let cs = Output::new(peripherals.GPIO34, Level::High, OutputConfig::default());
 
-    // DMA buffers - 512 bytes for SD card block size + some margin
-    /*
-    let (rx_buffer, rx_descriptors, tx_buffer, tx_descriptors) = dma_buffers!(1024);
-    let dma_rx_buf = DmaRxBuf::new(rx_descriptors, rx_buffer).unwrap();
-    let dma_tx_buf = DmaTxBuf::new(tx_descriptors, tx_buffer).unwrap();
-    */
-
+    // `min_async_transfer_size` keeps the SD protocol's small transfers (1-byte
+    // token polls, the 2-byte CRC, 6-byte commands) on the blocking FIFO path,
+    // where DMA setup costs far more than it saves. Only the 512-byte block
+    // reads clear the threshold. No `with_buffers`: the block destinations are
+    // 16-byte aligned PSRAM and the 0xFF source is in internal RAM, so both
+    // sides take the driver's zero-copy path and never touch a bounce buffer.
     let spi = Spi::new(
         peripherals.SPI2,
         esp_hal::spi::master::Config::default()
             .with_frequency(Rate::from_mhz(80))
             .with_mode(esp_hal::spi::Mode::_0),
+            //.with_min_async_transfer_size(128),
     )
     .unwrap()
     .with_sck(sclk)
     .with_mosi(mosi)
     .with_miso(miso);
-    //.with_dma(peripherals.DMA_SPI2)
-    //.with_buffers(dma_rx_buf, dma_tx_buf);
+    //.with_dma(peripherals.DMA_SPI2);
 
     let spi_device = RamSpiDevice { bus: spi, cs };
 
