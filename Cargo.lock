@@ -534,14 +534,13 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 [[package]]
 name = "esp-alloc"
 version = "0.11.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#9a6f71f087585bc3938b88b7cd8bda780f29758b"
 dependencies = [
  "allocator-api2",
  "document-features",
  "enumset",
- "esp-config 0.8.0 (git+https://github.com/esp-rs/esp-hal.git)",
- "esp-metadata-generated 0.5.1 (git+https://github.com/esp-rs/esp-hal.git)",
- "esp-sync 0.3.0 (git+https://github.com/esp-rs/esp-hal.git)",
+ "esp-config 0.8.0",
+ "esp-metadata-generated 0.6.0",
+ "esp-sync 0.3.0",
  "linked_list_allocator",
  "rlsf",
 ]
@@ -554,7 +553,7 @@ checksum = "4fbfed00e884572d620a6958b13456fc2bb8ab75802b5adc8afc224f97cdebad"
 dependencies = [
  "document-features",
  "esp-config 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "esp-metadata-generated 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "esp-metadata-generated 0.5.1",
  "esp-println",
  "heapless 0.9.3",
  "riscv",
@@ -565,12 +564,11 @@ dependencies = [
 [[package]]
 name = "esp-bootloader-esp-idf"
 version = "0.6.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#9a6f71f087585bc3938b88b7cd8bda780f29758b"
 dependencies = [
  "document-features",
- "esp-config 0.8.0 (git+https://github.com/esp-rs/esp-hal.git)",
+ "esp-config 0.8.0",
  "esp-hal-procmacros",
- "esp-metadata-generated 0.5.1 (git+https://github.com/esp-rs/esp-hal.git)",
+ "esp-metadata-generated 0.6.0",
  "esp-rom-sys",
  "esp-storage",
  "jiff",
@@ -581,11 +579,9 @@ dependencies = [
 [[package]]
 name = "esp-config"
 version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcd577a122ec917691f6820a3df54388ecebc750f071b060f5e83707bc415512"
 dependencies = [
  "document-features",
- "esp-metadata-generated 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "esp-metadata-generated 0.6.0",
  "serde",
  "serde_yaml",
  "somni-expr",
@@ -594,10 +590,11 @@ dependencies = [
 [[package]]
 name = "esp-config"
 version = "0.8.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#9a6f71f087585bc3938b88b7cd8bda780f29758b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fcd577a122ec917691f6820a3df54388ecebc750f071b060f5e83707bc415512"
 dependencies = [
  "document-features",
- "esp-metadata-generated 0.5.1 (git+https://github.com/esp-rs/esp-hal.git)",
+ "esp-metadata-generated 0.5.1",
  "serde",
  "serde_yaml",
  "somni-expr",
@@ -606,7 +603,6 @@ dependencies = [
 [[package]]
 name = "esp-hal"
 version = "1.2.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#9a6f71f087585bc3938b88b7cd8bda780f29758b"
 dependencies = [
  "bitfield",
  "bytemuck",
@@ -628,12 +624,12 @@ dependencies = [
  "embedded-io-async 0.6.1",
  "embedded-io-async 0.7.0",
  "enumset",
- "esp-config 0.8.0 (git+https://github.com/esp-rs/esp-hal.git)",
+ "esp-config 0.8.0",
  "esp-hal-procmacros",
- "esp-metadata-generated 0.5.1 (git+https://github.com/esp-rs/esp-hal.git)",
+ "esp-metadata-generated 0.6.0",
  "esp-riscv-rt",
  "esp-rom-sys",
- "esp-sync 0.3.0 (git+https://github.com/esp-rs/esp-hal.git)",
+ "esp-sync 0.3.0",
  "esp32",
  "esp32c2",
  "esp32c3",
@@ -658,14 +654,13 @@ dependencies = [
  "static_cell",
  "strum",
  "ufmt-write",
- "xtensa-lx 0.13.0 (git+https://github.com/esp-rs/esp-hal.git)",
+ "xtensa-lx 0.13.0",
  "xtensa-lx-rt",
 ]
 
 [[package]]
 name = "esp-hal-procmacros"
 version = "0.23.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#9a6f71f087585bc3938b88b7cd8bda780f29758b"
 dependencies = [
  "document-features",
  "object",
@@ -684,8 +679,7 @@ checksum = "44d5a63d730b8c56e6b32773e35fcc4988d7d2e5c64d521652317d3ebddf2b52"
 
 [[package]]
 name = "esp-metadata-generated"
-version = "0.5.1"
-source = "git+https://github.com/esp-rs/esp-hal.git#9a6f71f087585bc3938b88b7cd8bda780f29758b"
+version = "0.6.0"
 
 [[package]]
 name = "esp-println"
@@ -694,7 +688,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebf772a41bc642b57399632aa06ab55391de35b2b8fcbb1b270d282fbd0fe5ff"
 dependencies = [
  "document-features",
- "esp-metadata-generated 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "esp-metadata-generated 0.5.1",
  "esp-sync 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log",
  "portable-atomic",
@@ -703,7 +697,6 @@ dependencies = [
 [[package]]
 name = "esp-riscv-rt"
 version = "0.15.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#9a6f71f087585bc3938b88b7cd8bda780f29758b"
 dependencies = [
  "document-features",
  "riscv",
@@ -713,25 +706,36 @@ dependencies = [
 [[package]]
 name = "esp-rom-sys"
 version = "0.1.5"
-source = "git+https://github.com/esp-rs/esp-hal.git#9a6f71f087585bc3938b88b7cd8bda780f29758b"
 dependencies = [
  "document-features",
- "esp-metadata-generated 0.5.1 (git+https://github.com/esp-rs/esp-hal.git)",
+ "esp-metadata-generated 0.6.0",
  "esp32s2",
 ]
 
 [[package]]
 name = "esp-storage"
 version = "0.10.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#9a6f71f087585bc3938b88b7cd8bda780f29758b"
 dependencies = [
  "document-features",
  "esp-hal",
  "esp-hal-procmacros",
- "esp-metadata-generated 0.5.1 (git+https://github.com/esp-rs/esp-hal.git)",
+ "esp-metadata-generated 0.6.0",
  "esp-rom-sys",
- "esp-sync 0.3.0 (git+https://github.com/esp-rs/esp-hal.git)",
+ "esp-sync 0.3.0",
  "esp32s2",
+]
+
+[[package]]
+name = "esp-sync"
+version = "0.3.0"
+dependencies = [
+ "document-features",
+ "embassy-sync 0.6.2",
+ "embassy-sync 0.7.2",
+ "embassy-sync 0.8.0",
+ "esp-metadata-generated 0.6.0",
+ "riscv",
+ "xtensa-lx 0.13.0",
 ]
 
 [[package]]
@@ -744,29 +748,16 @@ dependencies = [
  "embassy-sync 0.6.2",
  "embassy-sync 0.7.2",
  "embassy-sync 0.8.0",
- "esp-metadata-generated 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "esp-metadata-generated 0.5.1",
  "riscv",
  "xtensa-lx 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
-name = "esp-sync"
-version = "0.3.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#9a6f71f087585bc3938b88b7cd8bda780f29758b"
-dependencies = [
- "document-features",
- "embassy-sync 0.6.2",
- "embassy-sync 0.7.2",
- "embassy-sync 0.8.0",
- "esp-metadata-generated 0.5.1 (git+https://github.com/esp-rs/esp-hal.git)",
- "riscv",
- "xtensa-lx 0.13.0 (git+https://github.com/esp-rs/esp-hal.git)",
-]
-
-[[package]]
 name = "esp32"
-version = "0.41.0"
-source = "git+https://github.com/esp-rs/esp-pacs?rev=5cd68d2#5cd68d29dbf5c007d833f6a01f42ff4a193725e3"
+version = "0.42.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e31e10b4c4f5fc2445896b46a7dabd689572d1e52dada21703659d97a373aa4"
 dependencies = [
  "vcell",
 ]
@@ -791,56 +782,63 @@ dependencies = [
 
 [[package]]
 name = "esp32c2"
-version = "0.30.0"
-source = "git+https://github.com/esp-rs/esp-pacs?rev=5cd68d2#5cd68d29dbf5c007d833f6a01f42ff4a193725e3"
+version = "0.31.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d65460107911ca0f8e2b870a0abbe59970a658c7e9bf2ceb4428d77d4ad12623"
 dependencies = [
  "vcell",
 ]
 
 [[package]]
 name = "esp32c3"
-version = "0.33.0"
-source = "git+https://github.com/esp-rs/esp-pacs?rev=5cd68d2#5cd68d29dbf5c007d833f6a01f42ff4a193725e3"
+version = "0.34.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "569e03d871eac998bc62ef95a9a6d31a91fc0aaef0e0017a6b5a6a9c4759768a"
 dependencies = [
  "vcell",
 ]
 
 [[package]]
 name = "esp32c5"
-version = "0.3.0"
-source = "git+https://github.com/esp-rs/esp-pacs?rev=5cd68d2#5cd68d29dbf5c007d833f6a01f42ff4a193725e3"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f6309dc0ad85475c03b0676054d924123782ffe2855082747ab12ad221497e0b"
 dependencies = [
  "vcell",
 ]
 
 [[package]]
 name = "esp32c6"
-version = "0.24.0"
-source = "git+https://github.com/esp-rs/esp-pacs?rev=5cd68d2#5cd68d29dbf5c007d833f6a01f42ff4a193725e3"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f90472d3e6a752e5d20533796f649760103ea449319f14d2a26b2fdff95633bb"
 dependencies = [
  "vcell",
 ]
 
 [[package]]
 name = "esp32c61"
-version = "0.4.0"
-source = "git+https://github.com/esp-rs/esp-pacs?rev=5cd68d2#5cd68d29dbf5c007d833f6a01f42ff4a193725e3"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cdf71bb6e40b5f03d093e5a754a10d505f9ea68f8a9ae81553c898b5fff5b0b3"
 dependencies = [
  "vcell",
 ]
 
 [[package]]
 name = "esp32h2"
-version = "0.20.0"
-source = "git+https://github.com/esp-rs/esp-pacs?rev=5cd68d2#5cd68d29dbf5c007d833f6a01f42ff4a193725e3"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bdba9857bb32848de7aa3c0f4b84d5f13f369c87c34b271275e628fdc9bac747"
 dependencies = [
  "vcell",
 ]
 
 [[package]]
 name = "esp32p4"
-version = "0.3.0"
-source = "git+https://github.com/esp-rs/esp-pacs?rev=5cd68d2#5cd68d29dbf5c007d833f6a01f42ff4a193725e3"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f2d1630f4bdf2f11e192c70149895e625ed092e8f3c859b449ff970236223a4"
 dependencies = [
  "critical-section",
  "vcell",
@@ -848,24 +846,27 @@ dependencies = [
 
 [[package]]
 name = "esp32s2"
-version = "0.32.0"
-source = "git+https://github.com/esp-rs/esp-pacs?rev=5cd68d2#5cd68d29dbf5c007d833f6a01f42ff4a193725e3"
+version = "0.33.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a4d3aacde708234b93372de368fd7866f63c150c5e863ab9b9950b85a5103a5"
 dependencies = [
  "vcell",
 ]
 
 [[package]]
 name = "esp32s3"
-version = "0.36.0"
-source = "git+https://github.com/esp-rs/esp-pacs?rev=5cd68d2#5cd68d29dbf5c007d833f6a01f42ff4a193725e3"
+version = "0.37.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3e2e7d1a9bd72304ef0e55c90405195489ff902c908a57cd81fc8a4d51ff4ae"
 dependencies = [
  "vcell",
 ]
 
 [[package]]
 name = "esp32s31"
-version = "0.2.0"
-source = "git+https://github.com/esp-rs/esp-pacs?rev=5cd68d2#5cd68d29dbf5c007d833f6a01f42ff4a193725e3"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8b4f101d37c233fe88b2b5e6d27fedab934a52f804e34f52b4b9d4d5ba2ea63"
 dependencies = [
  "critical-section",
  "vcell",
@@ -1566,8 +1567,6 @@ dependencies = [
 [[package]]
 name = "xtensa-lx"
 version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e012d667b0aa6d2592ace8ef145a98bff3e76cca7a644f4181ecd7a916ed289b"
 dependencies = [
  "critical-section",
 ]
@@ -1575,7 +1574,8 @@ dependencies = [
 [[package]]
 name = "xtensa-lx"
 version = "0.13.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#9a6f71f087585bc3938b88b7cd8bda780f29758b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e012d667b0aa6d2592ace8ef145a98bff3e76cca7a644f4181ecd7a916ed289b"
 dependencies = [
  "critical-section",
 ]
@@ -1583,17 +1583,15 @@ dependencies = [
 [[package]]
 name = "xtensa-lx-rt"
 version = "0.23.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#9a6f71f087585bc3938b88b7cd8bda780f29758b"
 dependencies = [
  "document-features",
- "xtensa-lx 0.13.0 (git+https://github.com/esp-rs/esp-hal.git)",
+ "xtensa-lx 0.13.0",
  "xtensa-lx-rt-proc-macros",
 ]
 
 [[package]]
 name = "xtensa-lx-rt-proc-macros"
 version = "0.5.0"
-source = "git+https://github.com/esp-rs/esp-hal.git#9a6f71f087585bc3938b88b7cd8bda780f29758b"
 dependencies = [
  "proc-macro2",
  "quote",
