@@ -429,7 +429,6 @@ fn main() -> ! {
 
     // benchmark
     write!(&mut file_name, "{0: >03}.tif", cur_page).unwrap();
-    embedded_sdmmc::perf::reset();
     let t0 = esp_hal::time::Instant::now();
     let current_page_id = PageId::new(cur_title, cur_chapter, cur_page);
     let (buf, was_cached) = page_cache.get_or_alloc(current_page_id);
@@ -454,34 +453,6 @@ fn main() -> ! {
         },
         Err(_) => {}
     }
-
-    // Where the page load actually went, measured rather than inferred.
-    //   TK: waiting for each block's data token   NP: single-byte polls issued
-    //   DT: the 512-byte payload transfers        CR: the trailing CRC reads
-    //   CM: card_command, busy-waiting included   NC: CMD18/CMD12 pairs
-    // L - (TK + DT + CR + CM) is the FAT walk, the read_multi loop and the
-    // directory lookup.
-    // Where the page load actually went, measured rather than inferred.
-    //   TK: waiting for each block's data token   NP: single-byte polls issued
-    //   DT: the 512-byte payload transfers        CR: the trailing CRC reads
-    //   CM: card_command, busy-waiting included   NC: CMD18/CMD12 pairs
-    // L - (TK + DT + CR + CM) is the FAT walk, the read_multi loop and the
-    // directory lookup. One value per line: 16 characters is all a line holds.
-    let perf = embedded_sdmmc::perf::snapshot(240);
-    let mut perf_text = String::with_capacity(16);
-    for (label, value, y) in [
-        ("TK", perf.token_wait_us, 500),
-        ("NP", perf.token_polls, 600),
-        ("DT", perf.data_us, 700),
-        ("CR", perf.crc_us, 800),
-        ("CM", perf.command_us, 900),
-        ("NC", perf.multi_reads, 1000),
-    ] {
-        perf_text.clear();
-        write!(&mut perf_text, "{0}:{1: >10}", label, value).unwrap();
-        eink_display.write_fontbuf_at_pos(&perf_text[..], 0, y);
-    }
-
     /*
     let mut output_text = String::with_capacity(15);
     write!(&mut output_text, "hello world: {}", cur_page).unwrap();
